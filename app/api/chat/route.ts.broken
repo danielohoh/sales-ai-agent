@@ -1,0 +1,43 @@
+// NOTE: 기존 route.ts에 아래 Tool과 case를 병합하세요.
+
+// Tool 정의에 추가
+// {
+//   name: 'getClientActivityTimeline',
+//   description: '특정 고객사의 모든 활동 타임라인을 조회합니다.',
+//   input_schema: {
+//     type: 'object',
+//     properties: {
+//       clientId: { type: 'string', description: '고객사 ID' }
+//     },
+//     required: ['clientId']
+//   }
+// }
+
+// switch-case에 추가
+// case 'getClientActivityTimeline': {
+//   const timeline = await getClientActivityTimeline(input.clientId)
+//   return { content: timeline }
+// }
+
+// System Prompt에 추가
+// - 고객사 관련 요청을 처리할 때는 해당 고객의 활동 타임라인을 먼저 조회한다.
+import { NextResponse } from 'next/server'
+import { getClientActivityTimeline } from '@/app/clients/actions'
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json()
+
+    // 🔹 기존 AI 처리 로직 (Claude 호출 등)
+    // const result = ...
+
+    return NextResponse.json({
+      content: 'ok',
+    })
+  } catch (e) {
+    return NextResponse.json(
+      { error: 'AI 처리 중 오류' },
+      { status: 500 }
+    )
+  }
+}
