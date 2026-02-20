@@ -95,6 +95,40 @@ async function getNaverWorksAccessTokenForUser(userId: string) {
   }
 }
 
+async function naverWorksFetch(
+  userId: string,
+  url: string,
+  init?: RequestInit
+): Promise<{ ok: boolean; status: number; json: () => Promise<unknown>; text: () => Promise<string> } | { ok: false; error: string }> {
+  const tokenResult = await getNaverWorksAccessTokenForUser(userId)
+  if (tokenResult.error || !tokenResult.accessToken) {
+    return { ok: false, error: tokenResult.error || '토큰 발급 실패' }
+  }
+
+  const doFetch = async (token: string) =>
+    fetch(url, {
+      ...init,
+      headers: { Authorization: `Bearer ${token}`, ...(init?.headers || {}) },
+    })
+
+  let res = await doFetch(tokenResult.accessToken)
+
+  if (res.status === 401) {
+    const rowResult = await getUserNaverWorksToken(userId)
+    if (rowResult.data?.refresh_token) {
+      try {
+        const refreshed = await refreshNaverWorksAccessToken(rowResult.data.refresh_token)
+        await updateStoredNaverWorksToken(userId, refreshed, rowResult.data.refresh_token)
+        res = await doFetch(refreshed.access_token)
+      } catch {
+        return { ok: false, error: '네이버웍스 토큰 갱신 실패. 계정을 다시 연결해주세요.' }
+      }
+    }
+  }
+
+  return res
+}
+
 export async function getNaverWorksConnectionStatus() {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -498,26 +532,21 @@ export async function getMailFolders() {
     return { data: null as MailFolder[] | null, error: 'NAVER_WORKS_MAIL_SENDER 설정이 필요합니다.' }
   }
 
-  const tokenResult = await getNaverWorksAccessTokenForUser(user.id)
-  if (tokenResult.error || !tokenResult.accessToken) {
-    return { data: null as MailFolder[] | null, error: tokenResult.error || '토큰 발급 실패' }
-  }
-
-  const response = await fetch(
-    `https://www.worksapis.com/v1.0/users/${encodeURIComponent(senderUserId)}/mail/mailfolders`,
-    {
-      headers: {
-        Authorization: `Bearer ${tokenResult.accessToken}`,
-      },
-    }
+  const response = await naverWorksFetch(
+    user.id,
+    `https://www.worksapis.com/v1.0/users/${encodeURIComponent(senderUserId)}/mail/mailfolders`
   )
+
+  if ('error' in response) {
+    return { data: null as MailFolder[] | null, error: response.error }
+  }
 
   if (!response.ok) {
     const text = await response.text()
     return { data: null as MailFolder[] | null, error: `메일 폴더 조회 실패 (${response.status}): ${text}` }
   }
 
-  const json = await response.json()
+  const json = await response.json() as Record<string, unknown>
   return { data: (json.mailFolders || []) as MailFolder[], error: null }
 }
 
@@ -540,11 +569,6 @@ export async function getMailList(
     return { data: null as MailListResponse | null, error: 'NAVER_WORKS_MAIL_SENDER 설정이 필요합니다.' }
   }
 
-  const tokenResult = await getNaverWorksAccessTokenForUser(user.id)
-  if (tokenResult.error || !tokenResult.accessToken) {
-    return { data: null as MailListResponse | null, error: tokenResult.error || '토큰 발급 실패' }
-  }
-
   const params = new URLSearchParams()
   if (options?.count) params.set('count', String(options.count))
   if (options?.cursor) params.set('cursor', options.cursor)
@@ -554,41 +578,39 @@ export async function getMailList(
   const queryString = params.toString()
   const url = `https://www.worksapis.com/v1.0/users/${encodeURIComponent(senderUserId)}/mail/mailfolders/${encodeURIComponent(folderId)}/children${queryString ? `?${queryString}` : ''}`
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${tokenResult.accessToken}`,
-    },
-  })
+  const response = await naverWorksFetch(user.id, url)
+
+  if ('error' in response) {
+    return { data: null as MailListResponse | null, error: response.error }
+  }
 
   if (!response.ok) {
     const text = await response.text()
     return { data: null as MailListResponse | null, error: `메일 목록 조회 실패 (${response.status}): ${text}` }
   }
 
-  const json = await response.json()
-  const rawMails = json.mails || json.mailList || json.items || json.messages || json.children || []
+  const json = await response.json() as Record<string, unknown>
+  const rawMails = (json.mails || json.mailList || json.items || json.messages || json.children || []) as Record<string, unknown>[]
 
-  if (!Array.isArray(rawMails) || (rawMails.length === 0 && json && typeof json === 'object' && Object.keys(json).length > 0 && !json.mails && !json.mailList && !json.items)) {
+  if (!Array.isArray(rawMails) || (rawMails.length === 0 && Object.keys(json).length > 0 && !json.mails && !json.mailList && !json.items)) {
     const keys = Object.keys(json).join(', ')
     return { data: null as MailListResponse | null, error: `메일 응답 키: [${keys}]. 데이터 파싱 확인 필요.` }
   }
 
-  const normalizedMails = rawMails.map((m: Record<string, unknown>) => normalizeMailItem(m, false))
+  const normalizedMails = rawMails.map((m) => normalizeMailItem(m, false))
 
-  // Normalize pagination cursor from multiple possible field names
+  const meta = json.responseMetaData as Record<string, unknown> | undefined
+  const paging = json.pagingInfo as Record<string, unknown> | undefined
   const nextCursor =
-    json.responseMetaData?.nextCursor ||
-    json.responseMetaData?.cursor ||
-    json.pagingInfo?.nextCursor ||
-    json.pagingInfo?.cursor ||
-    json.nextCursor ||
-    json.cursor ||
+    meta?.nextCursor || meta?.cursor ||
+    paging?.nextCursor || paging?.cursor ||
+    json.nextCursor || json.cursor ||
     undefined
 
   return {
     data: {
       mails: normalizedMails,
-      responseMetaData: nextCursor ? { nextCursor } : undefined,
+      responseMetaData: nextCursor ? { nextCursor: String(nextCursor) } : undefined,
     } as MailListResponse,
     error: null,
   }
@@ -605,34 +627,29 @@ export async function getMailDetail(mailId: string) {
     return { data: null as MailItem | null, error: 'NAVER_WORKS_MAIL_SENDER 설정이 필요합니다.' }
   }
 
-  const tokenResult = await getNaverWorksAccessTokenForUser(user.id)
-  if (tokenResult.error || !tokenResult.accessToken) {
-    return { data: null as MailItem | null, error: tokenResult.error || '토큰 발급 실패' }
-  }
-
-  const response = await fetch(
-    `https://www.worksapis.com/v1.0/users/${encodeURIComponent(senderUserId)}/mail/${encodeURIComponent(mailId)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${tokenResult.accessToken}`,
-      },
-    }
+  const response = await naverWorksFetch(
+    user.id,
+    `https://www.worksapis.com/v1.0/users/${encodeURIComponent(senderUserId)}/mail/${encodeURIComponent(mailId)}`
   )
+
+  if ('error' in response) {
+    return { data: null as MailItem | null, error: response.error }
+  }
 
   if (!response.ok) {
     const text = await response.text()
     return { data: null as MailItem | null, error: `메일 상세 조회 실패 (${response.status}): ${text}` }
   }
 
-  const json = await response.json()
-  const rawMail = json.mailId ? json : (json.mail || json.message || json.item || null)
+  const json = await response.json() as Record<string, unknown>
+  const rawMail = json.mailId ? json : ((json.mail || json.message || json.item || null) as Record<string, unknown> | null)
 
   if (!rawMail) {
     const keys = Object.keys(json).join(', ')
     return { data: null as MailItem | null, error: `메일 상세 응답 키: [${keys}]. 데이터 파싱 확인 필요.` }
   }
 
-  return { data: normalizeMailItem(rawMail as Record<string, unknown>, true), error: null }
+  return { data: normalizeMailItem(rawMail, true), error: null }
 }
 
 // 메일 삭제
@@ -644,20 +661,15 @@ export async function deleteMail(mailId: string) {
   const senderUserId = process.env.NAVER_WORKS_MAIL_SENDER
   if (!senderUserId) return { error: 'NAVER_WORKS_MAIL_SENDER 설정이 필요합니다.' }
 
-  const tokenResult = await getNaverWorksAccessTokenForUser(user.id)
-  if (tokenResult.error || !tokenResult.accessToken) {
-    return { error: tokenResult.error || '토큰 발급 실패' }
-  }
-
-  const response = await fetch(
+  const response = await naverWorksFetch(
+    user.id,
     `https://www.worksapis.com/v1.0/users/${encodeURIComponent(senderUserId)}/mail/${encodeURIComponent(mailId)}`,
-    {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${tokenResult.accessToken}`,
-      },
-    }
+    { method: 'DELETE' }
   )
+
+  if ('error' in response) {
+    return { error: response.error }
+  }
 
   if (!response.ok) {
     const text = await response.text()
