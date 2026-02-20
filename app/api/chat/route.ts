@@ -438,6 +438,8 @@ export async function POST(req: Request) {
 
   const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
   const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+  const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
 
   // 파일이 있으면 Groq(OpenAI 호환) content 배열로 구성
   const buildUserContent = (text: string, attachedFiles?: AttachedFile[]): string | GroqContentPart[] => {
@@ -855,7 +857,20 @@ AI: → getAllActivities 도구로 전체 활동 조회
 - 성공 시 ✅, 문제 있으면 😅하고 대안 제시
 - 항상 다음에 할 수 있는 것 제안`
 
+    const ensureStringContent = (msgs: GroqMessage[]): GroqMessage[] =>
+      msgs.map(msg => {
+        if (typeof msg.content === 'string' || msg.content === null || msg.content === undefined) return msg
+        if (Array.isArray(msg.content)) {
+          const textParts = (msg.content as GroqContentPart[])
+            .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+            .map(p => p.text)
+          return { ...msg, content: textParts.join('\n') || '' }
+        }
+        return { ...msg, content: String(msg.content) }
+      })
+
     const callGroq = async (chatMessages: GroqMessage[], systemPrompt: string) => {
+      const safeMessages = ensureStringContent(chatMessages)
       const response = await fetch(GROQ_API_URL, {
         method: 'POST',
         headers: {
@@ -865,7 +880,7 @@ AI: → getAllActivities 도구로 전체 활동 조회
         body: JSON.stringify({
           model: GROQ_MODEL,
           max_tokens: 2048,
-          messages: [{ role: 'system', content: systemPrompt }, ...chatMessages],
+          messages: [{ role: 'system', content: systemPrompt }, ...safeMessages],
           tools: groqTools,
           tool_choice: 'auto',
         }),
@@ -878,6 +893,54 @@ AI: → getAllActivities 도구로 전체 활동 조회
       }
 
       return data
+    }
+
+    const hasImages = files && (files as AttachedFile[]).some((f: AttachedFile) => f.type.startsWith('image/'))
+    if (hasImages && GEMINI_API_KEY) {
+      const lastMsg = groqMessages[groqMessages.length - 1]
+      const originalText = typeof lastMsg.content === 'string'
+        ? lastMsg.content
+        : Array.isArray(lastMsg.content)
+          ? (lastMsg.content as GroqContentPart[]).filter(p => p.type === 'text').map(p => (p as { type: 'text'; text: string }).text).join('\n')
+          : ''
+
+      const geminiParts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = []
+      for (const file of files as AttachedFile[]) {
+        if (file.type.startsWith('image/')) {
+          geminiParts.push({ inline_data: { mime_type: file.type, data: file.data } })
+        }
+      }
+      geminiParts.push({
+        text: '이 이미지에 포함된 모든 텍스트, 데이터, 정보를 빠짐없이 정확하게 추출해주세요. 표 형태 데이터가 있으면 구조를 유지해서 정리해주세요. 명함이면 이름/회사/직함/연락처/이메일을 정리해주세요.',
+      })
+
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`
+        const geminiResponse = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: geminiParts }] }),
+        })
+
+        const geminiData = await geminiResponse.json()
+        if (geminiResponse.ok) {
+          const imageAnalysis = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+          console.log('Gemini vision analysis:', imageAnalysis)
+          lastMsg.content = `[첨부 이미지 분석 결과]\n${imageAnalysis}\n\n[사용자 요청]\n${originalText}`
+        } else {
+          console.error('Gemini API error:', geminiData)
+          lastMsg.content = `${originalText}\n\n(이미지 분석에 실패했습니다. 이미지 내용을 텍스트로 설명해주시면 처리해드릴게요.)`
+        }
+      } catch (visionError) {
+        console.error('Gemini vision error:', visionError)
+        lastMsg.content = `${originalText}\n\n(이미지 분석에 실패했습니다. 이미지 내용을 텍스트로 설명해주시면 처리해드릴게요.)`
+      }
+    } else if (hasImages) {
+      const lastMsg = groqMessages[groqMessages.length - 1]
+      const originalText = Array.isArray(lastMsg.content)
+        ? (lastMsg.content as GroqContentPart[]).filter(p => p.type === 'text').map(p => (p as { type: 'text'; text: string }).text).join('\n')
+        : String(lastMsg.content || '')
+      lastMsg.content = `${originalText}\n\n(GEMINI_API_KEY가 설정되지 않아 이미지를 분석할 수 없습니다.)`
     }
 
     let data = await callGroq(groqMessages, initialSystemPrompt)

@@ -456,10 +456,10 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
               {attachedFiles.map((file, index) => (
                 <div
                   key={index}
-                  className="relative group bg-slate-100 rounded-lg p-2 flex items-center gap-2"
+                  className="bg-slate-100 rounded-lg p-2 pr-1 flex items-center gap-2"
                 >
                   {file.type.startsWith('image/') ? (
-                    <div className="w-12 h-12 rounded overflow-hidden">
+                    <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
                       <img
                         src={file.preview}
                         alt={file.name}
@@ -467,7 +467,7 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
                       />
                     </div>
                   ) : (
-                    <div className="w-12 h-12 rounded bg-red-100 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded bg-red-100 flex items-center justify-center flex-shrink-0">
                       <FileText className="h-6 w-6 text-red-600" />
                     </div>
                   )}
@@ -480,7 +480,7 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
                   <button
                     type="button"
                     onClick={() => removeAttachedFile(index)}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="ml-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
                   >
                     <X className="h-3 w-3" />
                   </button>
