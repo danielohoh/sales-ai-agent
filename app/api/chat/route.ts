@@ -994,26 +994,34 @@ AI: → getAllActivities 도구로 전체 활동 조회
         return { ...msg, content: String(msg.content) }
       })
 
-    const callGroq = async (chatMessages: GroqMessage[], systemPrompt: string) => {
+    const callGroq = async (chatMessages: GroqMessage[], systemPrompt: string, useTools = true) => {
       const safeMessages = ensureStringContent(chatMessages)
+      const body: Record<string, unknown> = {
+        model: GROQ_MODEL,
+        max_tokens: 2048,
+        messages: [{ role: 'system', content: systemPrompt }, ...safeMessages],
+      }
+      if (useTools) {
+        body.tools = groqTools
+        body.tool_choice = 'auto'
+      }
+
       const response = await fetch(GROQ_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${process.env.GROQ_API_KEY!}`,
         },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          max_tokens: 2048,
-          messages: [{ role: 'system', content: systemPrompt }, ...safeMessages],
-          tools: groqTools,
-          tool_choice: 'auto',
-        }),
+        body: JSON.stringify(body),
       })
 
       const data = await response.json()
       if (!response.ok) {
         const message = data?.error?.message || `Groq API 호출 실패 (${response.status})`
+        if (useTools && message.includes('failed_generation')) {
+          console.log('Groq failed_generation with tools, retrying without tools...')
+          return callGroq(chatMessages, systemPrompt, false)
+        }
         throw new Error(message)
       }
 
