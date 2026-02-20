@@ -512,6 +512,7 @@ async function executeTool(name: string, input: Record<string, unknown>, userId:
               description: input.description,
               start_date: `${input.date}T${input.start_time || '10:00'}:00`,
               end_date: `${input.date}T${input.end_time || '11:00'}:00`,
+              status: 'scheduled',
               location: input.location,
               contact_name: input.contact_name,
               contact_phone: input.contact_phone,
@@ -537,37 +538,19 @@ export async function POST(req: Request) {
 
   type IncomingMessage = { role: 'user' | 'assistant' | 'system'; content: string }
   type AttachedFile = { name: string; type: string; data: string }
-  type GroqContentPart =
-    | { type: 'text'; text: string }
-    | { type: 'image_url'; image_url: { url: string } }
-  type GroqToolCall = {
-    id: string
-    type: 'function'
-    function: {
-      name: string
-      arguments: string
-    }
-  }
-  type GroqMessage = {
-    role: 'system' | 'user' | 'assistant' | 'tool'
-    content?: string | GroqContentPart[] | null
-    tool_calls?: GroqToolCall[]
-    tool_call_id?: string
+  type GeminiPart =
+    | { text: string }
+    | { inlineData: { mimeType: string; data: string } }
+    | { functionCall: { name: string; args: Record<string, unknown> } }
+    | { functionResponse: { name: string; response: Record<string, unknown> } }
+  type GeminiContent = { role: 'user' | 'model'; parts: GeminiPart[] }
+  type GeminiResponse = {
+    candidates?: Array<{ content?: { parts?: GeminiPart[] } }>
+    error?: { message?: string }
   }
 
-  const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
-  const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY
   const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
-
-  const buildUserContent = (text: string, attachedFiles?: AttachedFile[]): string => {
-    if (!attachedFiles || attachedFiles.length === 0) {
-      return text || ''
-    }
-    const fileNames = attachedFiles.map(f => f.name).join(', ')
-    const userText = text || '첨부된 파일을 분석해주세요.'
-    return `[첨부 파일: ${fileNames}]\n${userText}`
-  }
 
   // 도구 정의
   const tools = [
@@ -745,9 +728,9 @@ export async function POST(req: Request) {
   ]
 
   try {
-    if (!process.env.GROQ_API_KEY) {
+    if (!GEMINI_API_KEY) {
       return Response.json({ 
-        content: 'GROQ_API_KEY 환경변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.' 
+        content: 'GEMINI_API_KEY 환경변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.' 
       }, { status: 200 })
     }
 
@@ -757,29 +740,31 @@ export async function POST(req: Request) {
       }, { status: 200 })
     }
 
-    const groqTools = tools.map((tool) => ({
-      type: 'function' as const,
-      function: {
+    const geminiTools = [{
+      functionDeclarations: tools.map(tool => ({
         name: tool.name,
         description: tool.description,
         parameters: tool.input_schema,
-      },
-    }))
+      })),
+    }]
 
-    // 메시지 변환 (마지막 사용자 메시지에 파일 첨부)
-    const groqMessages: GroqMessage[] = (messages as IncomingMessage[]).map((m, index) => {
-      // 마지막 사용자 메시지이고 파일이 있으면 파일 포함
-      if (index === messages.length - 1 && m.role === 'user' && files && files.length > 0) {
-        return {
-          role: m.role,
-          content: buildUserContent(m.content, files as AttachedFile[]),
+    const geminiContents: GeminiContent[] = (messages as IncomingMessage[])
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .map((m, index, arr) => {
+        const role: 'user' | 'model' = m.role === 'assistant' ? 'model' : 'user'
+        const parts: GeminiPart[] = []
+
+        if (index === arr.length - 1 && m.role === 'user' && files && files.length > 0) {
+          for (const file of files as AttachedFile[]) {
+            if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+              parts.push({ inlineData: { mimeType: file.type, data: file.data } })
+            }
+          }
         }
-      }
-      return {
-        role: m.role,
-        content: m.content,
-      }
-    })
+
+        parts.push({ text: m.content || '' })
+        return { role, parts }
+      })
 
     const initialSystemPrompt = `당신은 B2B 영업 AI 비서입니다. 영업 담당자의 업무를 똑똑하게 도와줍니다.
 
@@ -951,172 +936,69 @@ AI: → getAllActivities 도구로 전체 활동 조회
 - 성공 시 ✅, 문제 있으면 😅하고 대안 제시
 - 항상 다음에 할 수 있는 것 제안`
 
-    const ensureStringContent = (msgs: GroqMessage[]): GroqMessage[] =>
-      msgs.map(msg => {
-        if (typeof msg.content === 'string' || msg.content === null || msg.content === undefined) return msg
-        if (Array.isArray(msg.content)) {
-          const textParts = (msg.content as GroqContentPart[])
-            .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-            .map(p => p.text)
-          return { ...msg, content: textParts.join('\n') || '' }
-        }
-        return { ...msg, content: String(msg.content) }
-      })
+    const systemInstruction = { parts: [{ text: initialSystemPrompt }] }
 
-    const callGroq = async (chatMessages: GroqMessage[], systemPrompt: string, useTools = true) => {
-      const safeMessages = ensureStringContent(chatMessages)
+    const callGemini = async (contents: GeminiContent[], useTools = true): Promise<GeminiResponse> => {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`
       const body: Record<string, unknown> = {
-        model: GROQ_MODEL,
-        max_tokens: 2048,
-        messages: [{ role: 'system', content: systemPrompt }, ...safeMessages],
+        contents,
+        systemInstruction,
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        ],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
       }
       if (useTools) {
-        body.tools = groqTools
-        body.tool_choice = 'auto'
+        body.tools = geminiTools
       }
 
-      const response = await fetch(GROQ_API_URL, {
+      const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.GROQ_API_KEY!}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
 
-      const data = await response.json()
+      const data = (await response.json()) as GeminiResponse
       if (!response.ok) {
-        const message = data?.error?.message || `Groq API 호출 실패 (${response.status})`
-        if (useTools && message.includes('failed_generation')) {
-          console.log('Groq failed_generation with tools, retrying without tools...')
-          return callGroq(chatMessages, systemPrompt, false)
-        }
-        throw new Error(message)
+        const msg = data?.error?.message || `Gemini API 호출 실패 (${response.status})`
+        console.error('Gemini API error:', msg)
+        throw new Error(msg)
       }
 
       return data
     }
 
-    const supportedMediaTypes = (f: AttachedFile) =>
-      f.type.startsWith('image/') || f.type === 'application/pdf'
-    const hasMediaFiles = files && (files as AttachedFile[]).some(supportedMediaTypes)
-
-    if (hasMediaFiles && GEMINI_API_KEY) {
-      const lastMsg = groqMessages[groqMessages.length - 1]
-      const originalText = typeof lastMsg.content === 'string' ? lastMsg.content : ''
-
-      const geminiParts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = []
-      for (const file of files as AttachedFile[]) {
-        if (supportedMediaTypes(file)) {
-          geminiParts.push({ inline_data: { mime_type: file.type, data: file.data } })
-        }
-      }
-
-      const userContext = originalText.replace(/^\[첨부 파일:.*?\]\n?/, '').trim()
-      geminiParts.push({
-        text: `다음은 B2B 영업 관리 시스템에서 사용자가 첨부한 파일입니다.
-파일에 포함된 모든 텍스트, 데이터, 정보를 빠짐없이 정확하게 추출해주세요.
-
-분석 지침:
-- 명함: 이름, 회사명, 직함, 전화번호, 이메일, 주소를 구분하여 정리
-- 견적서/제안서: 고객사, 금액, 제품/서비스, 날짜 등 주요 항목 정리
-- 계약서: 계약 당사자, 기간, 금액, 주요 조건 정리
-- 표 형태 데이터: 구조를 유지해서 정리
-- PDF 문서: 전체 내용을 읽고 핵심 정보 추출
-- 기타: 문서 종류를 파악하고 관련 정보 추출
-
-${userContext ? `사용자 메시지: ${userContext}` : ''}`,
-      })
-
-      try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`
-        const geminiResponse = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: geminiParts }],
-            safetySettings: [
-              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              maxOutputTokens: 4096,
-            },
-          }),
-        })
-
-        const geminiData = await geminiResponse.json()
-        if (geminiResponse.ok) {
-          const analysis = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
-          if (analysis.trim()) {
-            console.log('Gemini analysis:', analysis.substring(0, 200))
-            lastMsg.content = `[첨부 파일 분석 결과]\n${analysis}\n\n[사용자 요청]\n${userContext || '첨부된 파일을 확인해주세요.'}`
-          } else {
-            console.warn('Gemini returned empty analysis')
-            lastMsg.content = `${originalText}\n\n(파일 내용을 추출하지 못했습니다. 파일 내용을 텍스트로 설명해주시면 처리해드릴게요.)`
-          }
-        } else {
-          const errDetail = geminiData?.error?.message || JSON.stringify(geminiData).substring(0, 200)
-          console.error('Gemini API error:', errDetail)
-          lastMsg.content = `${originalText}\n\n(파일 분석에 실패했습니다. 파일 내용을 텍스트로 설명해주시면 처리해드릴게요.)`
-        }
-      } catch (visionError) {
-        console.error('Gemini vision error:', visionError)
-        lastMsg.content = `${originalText}\n\n(파일 분석 중 오류가 발생했습니다. 파일 내용을 텍스트로 설명해주시면 처리해드릴게요.)`
-      }
-    } else if (hasMediaFiles) {
-      const lastMsg = groqMessages[groqMessages.length - 1]
-      const originalText = typeof lastMsg.content === 'string' ? lastMsg.content : ''
-      lastMsg.content = `${originalText}\n\n(GEMINI_API_KEY가 설정되지 않아 파일을 분석할 수 없습니다.)`
-    }
-
-    let data = await callGroq(groqMessages, initialSystemPrompt)
-    let assistantMessage: {
-      content?: string | null
-      tool_calls?: GroqToolCall[]
-    } = data.choices?.[0]?.message || {}
+    let data = await callGemini(geminiContents)
+    let modelParts: GeminiPart[] = data.candidates?.[0]?.content?.parts || []
     let pendingActionPlan: ActionPlan | undefined
     let approvalMessage = ''
 
-    console.log('Initial API response:', JSON.stringify(data, null, 2))
-
-    // 도구 사용 루프
     let loopCount = 0
-    while (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0 && loopCount < 10) {
+    while (loopCount < 10) {
+      const functionCalls = modelParts.filter(
+        (p): p is { functionCall: { name: string; args: Record<string, unknown> } } => 'functionCall' in p
+      )
+      if (functionCalls.length === 0) break
       loopCount++
-      const toolCalls = assistantMessage.tool_calls
 
-      groqMessages.push({
-        role: 'assistant',
-        content: assistantMessage.content || '',
-        tool_calls: toolCalls,
-      })
+      geminiContents.push({ role: 'model', parts: modelParts })
 
-      for (const toolCall of toolCalls) {
-        let parsedInput: Record<string, unknown> = {}
-        const rawArgs = toolCall.function.arguments
-        if (rawArgs && rawArgs !== 'null' && rawArgs !== '{}') {
-          try {
-            const parsed = JSON.parse(rawArgs)
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-              parsedInput = parsed as Record<string, unknown>
-            }
-          } catch {
-            console.error('Tool arguments parse error:', rawArgs)
-          }
-        }
-
-        console.log('Tool use:', toolCall.function.name, parsedInput)
+      const responseParts: GeminiPart[] = []
+      for (const fc of functionCalls) {
+        const { name, args } = fc.functionCall
+        console.log('Tool use:', name, args)
         let toolResult: Record<string, unknown>
         try {
-          toolResult = await executeTool(toolCall.function.name, parsedInput, userId)
+          toolResult = await executeTool(name, args || {}, userId)
         } catch (toolError) {
-          console.error('Tool execution error:', toolCall.function.name, toolError)
-          toolResult = { error: `도구 실행 실패: ${toolCall.function.name}` }
+          console.error('Tool execution error:', name, toolError)
+          toolResult = { error: `도구 실행 실패: ${name}` }
         }
+
+        console.log('Tool result:', name, Object.keys(toolResult))
 
         if (toolResult.needsApproval === true) {
           const actionPlan = toolResult.actionPlan
@@ -1125,31 +1007,26 @@ ${userContext ? `사용자 메시지: ${userContext}` : ''}`,
             typeof actionPlan === 'object' &&
             !Array.isArray(actionPlan) &&
             'plan_id' in actionPlan &&
-            typeof actionPlan.plan_id === 'string'
+            typeof (actionPlan as Record<string, unknown>).plan_id === 'string'
           ) {
             pendingActionPlan = actionPlan as ActionPlan
-            if (typeof assistantMessage.content === 'string' && assistantMessage.content.trim().length > 0) {
-              approvalMessage = assistantMessage.content
+            const textParts = modelParts.filter((p): p is { text: string } => 'text' in p)
+            if (textParts.length > 0) {
+              approvalMessage = textParts.map(p => p.text).join('\n')
             }
           }
         }
 
-        console.log('Tool result:', toolResult)
-
-        groqMessages.push({
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: JSON.stringify(toolResult),
-        })
+        responseParts.push({ functionResponse: { name, response: toolResult } })
       }
 
       if (pendingActionPlan) {
         break
       }
 
-      data = await callGroq(groqMessages, followupSystemPrompt)
-      assistantMessage = data.choices?.[0]?.message || {}
-      console.log('Loop response:', JSON.stringify(data, null, 2))
+      geminiContents.push({ role: 'user', parts: responseParts })
+      data = await callGemini(geminiContents)
+      modelParts = data.candidates?.[0]?.content?.parts || []
     }
 
     if (pendingActionPlan) {
@@ -1160,19 +1037,15 @@ ${userContext ? `사용자 메시지: ${userContext}` : ''}`,
       return Response.json(response)
     }
 
-    const finalText = assistantMessage.content
-    console.log('Final text:', finalText)
-
-    if (typeof finalText === 'string' && finalText.trim().length > 0) {
-      const response: ChatApiResponse = { content: finalText }
-      return Response.json(response)
+    const textParts = modelParts.filter((p): p is { text: string } => 'text' in p)
+    const finalText = textParts.map(p => p.text).join('\n')
+    if (finalText.trim()) {
+      return Response.json({ content: finalText } as ChatApiResponse)
     }
 
-    // 응답이 없으면 질문으로 대체 (절대 포기하지 않음!)
-    const fallbackResponse: ChatApiResponse = {
+    return Response.json({
       content: '제가 요청을 정확히 이해했는지 확인하고 싶어요! 😊\n\n어떤 작업을 도와드릴까요?\n- 고객 조회/등록\n- 활동 기록 추가 (통화, 미팅, 이메일 등)\n- 파이프라인 단계 변경\n- 영업 통계 확인\n\n자세히 알려주시면 바로 처리해드릴게요!' 
-    }
-    return Response.json(fallbackResponse)
+    } as ChatApiResponse)
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error)
     console.error('API Error:', errMsg, error)
