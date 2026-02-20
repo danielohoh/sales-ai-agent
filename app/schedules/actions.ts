@@ -36,7 +36,7 @@ export async function getSchedules(params?: {
   }
 
   if (params?.endDate) {
-    query = query.lte('start_date', params.endDate)
+    query = query.lte('start_date', `${params.endDate}T23:59:59`)
   }
 
   if (params?.clientId) {

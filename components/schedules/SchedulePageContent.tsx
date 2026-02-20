@@ -33,7 +33,7 @@ export function SchedulePageContent() {
     setLoading(true)
 
     const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd')
-    const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd')
+    const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd') + 'T23:59:59'
 
     const [schedulesResult, clientsResult] = await Promise.all([
       getSchedules({
