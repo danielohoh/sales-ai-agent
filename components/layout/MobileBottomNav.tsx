@@ -18,7 +18,7 @@ export function MobileBottomNav() {
 
   const isActive = (href: string) => {
     if (href === '/more') {
-      return ['/email', '/proposals', '/analytics', '/tasks', '/settings'].some((p) => pathname.startsWith(p))
+      return pathname === '/more' || ['/email', '/proposals', '/analytics', '/tasks', '/settings'].some((p) => pathname.startsWith(p))
     }
     return pathname.startsWith(href)
   }
@@ -32,7 +32,7 @@ export function MobileBottomNav() {
           return (
             <Link
               key={tab.href}
-              href={tab.href === '/more' ? '/email' : tab.href}
+              href={tab.href}
               className={cn(
                 'flex min-w-[64px] flex-col items-center gap-0.5 px-3 py-2 text-xs transition-colors',
                 active ? 'text-blue-600' : 'text-slate-400'

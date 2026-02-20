@@ -192,7 +192,6 @@ async function executeTool(name: string, input: Record<string, unknown>, userId:
             type: 'supabase.insert',
             table: 'clients',
             values: {
-              user_id: userId,
               company_name: input.company_name,
               brand_name: input.brand_name,
               industry: input.industry,
@@ -202,6 +201,7 @@ async function executeTool(name: string, input: Record<string, unknown>, userId:
               notes: input.notes,
               pipeline_stage: 'inquiry',
             },
+            result_key: 'new_client',
             notes: '고객사 신규 등록',
           },
           {

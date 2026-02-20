@@ -35,6 +35,7 @@ export interface ActionStep {
   where?: Record<string, unknown>
   values?: Record<string, unknown>
   notes?: string
+  result_key?: string
 }
 
 export interface ActionPlan {
@@ -56,11 +57,23 @@ export interface ActionPlan {
 
 export type ActionPlanStatus = 'pending' | 'approved' | 'rejected' | 'modified' | 'executed' | 'failed'
 
+export interface StepResult {
+  step_index: number
+  action_type: ActionType
+  table: string
+  status: 'success' | 'error' | 'skipped'
+  data?: Record<string, unknown>
+  error?: string
+}
+
 export interface ActionPlanResult {
   plan_id: string
-  status: 'success' | 'error'
+  status: 'success' | 'error' | 'rolled_back'
   message: string
+  rolled_back: boolean
+  failed_step: number | null
   data?: Record<string, unknown>
+  step_results?: StepResult[]
 }
 
 export interface ChatApiResponse {

@@ -330,7 +330,7 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
     } catch {
       setMessages(prev => prev.map(m =>
         m.actionPlan?.plan_id === plan.plan_id
-          ? { ...m, planStatus: 'failed' as const, planResult: { plan_id: plan.plan_id, status: 'error' as const, message: '실행 중 오류가 발생했습니다.' } }
+          ? { ...m, planStatus: 'failed' as const, planResult: { plan_id: plan.plan_id, status: 'error' as const, message: '실행 중 오류가 발생했습니다.', rolled_back: false, failed_step: null } }
           : m
       ))
     }
