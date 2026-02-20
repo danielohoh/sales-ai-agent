@@ -63,7 +63,7 @@ export default async function EmailPage({
   let mailError: string | null = foldersResult.error || null
 
   if (targetFolder) {
-    const result = await getMailList(targetFolder.folderId)
+    const result = await getMailList(targetFolder.folderId, { count: 30 })
     if (result.data) {
       mails = result.data.mails
       nextCursor = result.data.responseMetaData?.nextCursor

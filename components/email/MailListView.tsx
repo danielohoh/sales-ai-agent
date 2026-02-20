@@ -17,7 +17,10 @@ interface MailListViewProps {
 }
 
 function formatMailDate(dateStr: string) {
+  if (!dateStr) return ''
   const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return ''
+
   const now = new Date()
   const isToday =
     date.getFullYear() === now.getFullYear() &&

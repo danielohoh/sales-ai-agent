@@ -417,6 +417,73 @@ export type MailListResponse = {
 }
 
 // ============================================
+// Naver Works Mail API — Response Normalization
+// ============================================
+
+function normalizeBody(raw: Record<string, unknown>): { contentType: string; content: string } | undefined {
+  const b = raw.body
+  if (b && typeof b === 'object' && !Array.isArray(b)) {
+    const bodyObj = b as Record<string, unknown>
+    if (typeof bodyObj.content === 'string' && bodyObj.content) {
+      return { contentType: String(bodyObj.contentType || 'text/html'), content: bodyObj.content }
+    }
+    if (typeof bodyObj.plainText === 'string' && bodyObj.plainText) {
+      return { contentType: 'text/plain', content: bodyObj.plainText }
+    }
+    if (typeof bodyObj.htmlText === 'string' && bodyObj.htmlText) {
+      return { contentType: 'text/html', content: bodyObj.htmlText }
+    }
+    for (const key of Object.keys(bodyObj)) {
+      if (typeof bodyObj[key] === 'string' && (bodyObj[key] as string).length > 10) {
+        return { contentType: 'text/html', content: bodyObj[key] as string }
+      }
+    }
+  }
+  if (typeof b === 'string' && b) return { contentType: 'text/html', content: b }
+  if (typeof raw.bodyText === 'string' && raw.bodyText) return { contentType: 'text/plain', content: raw.bodyText as string }
+  if (typeof raw.htmlBody === 'string' && raw.htmlBody) return { contentType: 'text/html', content: raw.htmlBody as string }
+  if (typeof raw.textBody === 'string' && raw.textBody) return { contentType: 'text/plain', content: raw.textBody as string }
+  if (typeof raw.content === 'string' && (raw.content as string).length > 10) return { contentType: 'text/html', content: raw.content as string }
+
+  const allKeys = Object.keys(raw).join(', ')
+  const bodyKeys = (b && typeof b === 'object') ? Object.keys(b as object).join(', ') : 'N/A'
+  return {
+    contentType: 'text/plain',
+    content: `[디버그] 본문 필드를 찾을 수 없습니다.\n전체 키: ${allKeys}\nbody 키: ${bodyKeys}`,
+  }
+}
+
+function normalizeAddress(addr: unknown): MailAddress {
+  if (!addr || typeof addr !== 'object') return { name: '', emailAddress: '' }
+  const a = addr as Record<string, unknown>
+  return {
+    name: String(a.name || a.displayName || a.senderName || ''),
+    emailAddress: String(a.emailAddress || a.email || a.address || a.mailAddress || ''),
+  }
+}
+
+function normalizeAddressList(val: unknown): MailAddress[] {
+  if (!val) return []
+  if (Array.isArray(val)) return val.map(normalizeAddress)
+  if (typeof val === 'string') return [{ name: '', emailAddress: val }]
+  return [normalizeAddress(val)]
+}
+
+function normalizeMailItem(raw: Record<string, unknown>, includeBody = false): MailItem {
+  return {
+    mailId: String(raw.mailId || raw.id || ''),
+    subject: String(raw.subject || raw.title || ''),
+    from: normalizeAddress(raw.from || raw.sender),
+    to: normalizeAddressList(raw.to || raw.recipients || raw.toRecipients),
+    cc: normalizeAddressList(raw.cc || raw.ccRecipients),
+    receivedTime: String(raw.receivedTime || raw.sentTime || raw.dateTime || raw.date || raw.receivedDate || raw.sentDate || ''),
+    isRead: (raw.isRead ?? raw.read ?? false) as boolean,
+    hasAttachment: (raw.hasAttachment ?? raw.hasAttachments ?? false) as boolean,
+    body: includeBody ? normalizeBody(raw) : undefined,
+  }
+}
+
+// ============================================
 // Naver Works Mail API Actions
 // ============================================
 
@@ -499,17 +566,29 @@ export async function getMailList(
   }
 
   const json = await response.json()
-  const mails = json.mails || json.mailList || json.items || json.messages || json.children || []
+  const rawMails = json.mails || json.mailList || json.items || json.messages || json.children || []
 
-  if (!Array.isArray(mails) || (mails.length === 0 && json && typeof json === 'object' && Object.keys(json).length > 0 && !json.mails)) {
+  if (!Array.isArray(rawMails) || (rawMails.length === 0 && json && typeof json === 'object' && Object.keys(json).length > 0 && !json.mails && !json.mailList && !json.items)) {
     const keys = Object.keys(json).join(', ')
     return { data: null as MailListResponse | null, error: `메일 응답 키: [${keys}]. 데이터 파싱 확인 필요.` }
   }
 
+  const normalizedMails = rawMails.map((m: Record<string, unknown>) => normalizeMailItem(m, false))
+
+  // Normalize pagination cursor from multiple possible field names
+  const nextCursor =
+    json.responseMetaData?.nextCursor ||
+    json.responseMetaData?.cursor ||
+    json.pagingInfo?.nextCursor ||
+    json.pagingInfo?.cursor ||
+    json.nextCursor ||
+    json.cursor ||
+    undefined
+
   return {
     data: {
-      mails,
-      responseMetaData: json.responseMetaData || json.pagingInfo || undefined,
+      mails: normalizedMails,
+      responseMetaData: nextCursor ? { nextCursor } : undefined,
     } as MailListResponse,
     error: null,
   }
@@ -546,14 +625,14 @@ export async function getMailDetail(mailId: string) {
   }
 
   const json = await response.json()
-  const mail = json.mailId ? json : (json.mail || json.message || json.item || null)
+  const rawMail = json.mailId ? json : (json.mail || json.message || json.item || null)
 
-  if (!mail) {
+  if (!rawMail) {
     const keys = Object.keys(json).join(', ')
     return { data: null as MailItem | null, error: `메일 상세 응답 키: [${keys}]. 데이터 파싱 확인 필요.` }
   }
 
-  return { data: mail as MailItem, error: null }
+  return { data: normalizeMailItem(rawMail as Record<string, unknown>, true), error: null }
 }
 
 // 메일 삭제
