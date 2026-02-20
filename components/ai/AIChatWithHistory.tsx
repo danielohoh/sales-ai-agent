@@ -20,6 +20,8 @@ import {
   FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ActionPlanCard } from './ActionPlanCard'
+import type { ActionPlan, ActionPlanResult, ChatApiResponse } from '@/types/action-plan'
 import {
   getChatSessions,
   createChatSession,
@@ -48,6 +50,9 @@ interface Message {
   content: string
   files?: AttachedFile[]
   created_at?: string
+  actionPlan?: ActionPlan
+  planStatus?: 'pending' | 'approved' | 'rejected' | 'executing' | 'executed' | 'failed'
+  planResult?: ActionPlanResult
 }
 
 interface AIChatWithHistoryProps {
@@ -258,7 +263,7 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
 
       if (!response.ok) throw new Error('API 오류')
 
-      const data = await response.json()
+      const data: ChatApiResponse = await response.json()
       
       const assistantContent = data.content || '응답을 받지 못했습니다.'
       
@@ -266,6 +271,8 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: assistantContent,
+        actionPlan: data.actionPlan,
+        planStatus: data.actionPlan ? 'pending' : undefined,
       }
       setMessages(prev => [...prev, assistantMessage])
 
@@ -285,6 +292,54 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleApprove = async (plan: ActionPlan, modifications?: Record<string, unknown>) => {
+    setMessages(prev => prev.map(m =>
+      m.actionPlan?.plan_id === plan.plan_id ? { ...m, planStatus: 'executing' as const } : m
+    ))
+
+    try {
+      const response = await fetch('/api/chat/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, userId, modifications }),
+      })
+      const result: ActionPlanResult = await response.json()
+
+      setMessages(prev => prev.map(m =>
+        m.actionPlan?.plan_id === plan.plan_id
+          ? { ...m, planStatus: (result.status === 'success' ? 'executed' : 'failed') as Message['planStatus'], planResult: result }
+          : m
+      ))
+
+      const resultContent = result.status === 'success'
+        ? `✅ ${result.message}`
+        : `❌ ${result.message}`
+
+      const resultMsg: Message = {
+        id: (Date.now() + 2).toString(),
+        role: 'assistant',
+        content: resultContent,
+      }
+      setMessages(prev => [...prev, resultMsg])
+
+      if (currentSessionId) {
+        await saveChatMessage(currentSessionId, 'assistant', resultContent)
+      }
+    } catch {
+      setMessages(prev => prev.map(m =>
+        m.actionPlan?.plan_id === plan.plan_id
+          ? { ...m, planStatus: 'failed' as const, planResult: { plan_id: plan.plan_id, status: 'error' as const, message: '실행 중 오류가 발생했습니다.' } }
+          : m
+      ))
+    }
+  }
+
+  const handleReject = (planId: string) => {
+    setMessages(prev => prev.map(m =>
+      m.actionPlan?.plan_id === planId ? { ...m, planStatus: 'rejected' as const } : m
+    ))
   }
 
   const handleExampleClick = (prompt: string) => {
@@ -428,6 +483,17 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
                       <div className="text-sm whitespace-pre-wrap">
                         {message.content}
                       </div>
+                      {message.role === 'assistant' && message.actionPlan && (
+                        <div className="mt-3">
+                          <ActionPlanCard
+                            plan={message.actionPlan}
+                            onApprove={handleApprove}
+                            onReject={handleReject}
+                            status={message.planStatus || 'pending'}
+                            result={message.planResult}
+                          />
+                        </div>
+                      )}
                     </div>
                     {message.role === 'user' && (
                       <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">

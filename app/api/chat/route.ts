@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { ActionPlan, ActionStep, ChatApiResponse } from '@/types/action-plan'
 
 // Supabase 클라이언트
 const supabase = createClient(
@@ -7,6 +8,29 @@ const supabase = createClient(
 )
 
 export const maxDuration = 30
+
+function buildActionPlan(params: {
+  intent: ActionPlan['intent']
+  entities: Record<string, unknown>
+  actions: ActionStep[]
+  confirmationMessage: string
+  missingFields?: string[]
+  riskFlags?: ActionPlan['risk_flags']
+  duplicateCandidates?: ActionPlan['duplicate_candidates']
+}): ActionPlan {
+  return {
+    plan_id: crypto.randomUUID(),
+    intent: params.intent,
+    confidence: 0.9,
+    entities: params.entities,
+    actions: params.actions,
+    needs_confirmation: true,
+    confirmation_message: params.confirmationMessage,
+    missing_fields: params.missingFields || [],
+    risk_flags: params.riskFlags || [],
+    duplicate_candidates: params.duplicateCandidates,
+  }
+}
 
 // 도구 실행 함수
 async function executeTool(name: string, input: Record<string, unknown>, userId: string) {
@@ -127,10 +151,31 @@ async function executeTool(name: string, input: Record<string, unknown>, userId:
     }
 
     case 'createClient': {
-      const { data: client, error } = await supabase
-        .from('clients')
-        .insert({
-          user_id: userId,
+      const companyName = typeof input.company_name === 'string' ? input.company_name.trim() : ''
+      const riskFlags: ActionPlan['risk_flags'] = []
+      let duplicateCandidates: ActionPlan['duplicate_candidates']
+
+      if (companyName) {
+        const { data: duplicates } = await supabase
+          .from('clients')
+          .select('id, company_name, brand_name')
+          .eq('user_id', userId)
+          .or(`company_name.ilike.%${companyName}%,brand_name.ilike.%${companyName}%`)
+          .limit(5)
+
+        if (duplicates && duplicates.length > 0) {
+          duplicateCandidates = duplicates.map((candidate) => ({
+            id: candidate.id,
+            company_name: candidate.company_name,
+            similarity: candidate.brand_name || candidate.company_name,
+          }))
+          riskFlags.push('duplicate_client')
+        }
+      }
+
+      const plan = buildActionPlan({
+        intent: 'create_client',
+        entities: {
           company_name: input.company_name,
           brand_name: input.brand_name,
           industry: input.industry,
@@ -138,70 +183,141 @@ async function executeTool(name: string, input: Record<string, unknown>, userId:
           inquiry_source: input.inquiry_source,
           interest_product: input.interest_product,
           notes: input.notes,
-          pipeline_stage: 'inquiry',
-        })
-        .select()
-        .single()
+          contact_name: input.contact_name,
+          contact_phone: input.contact_phone,
+          contact_email: input.contact_email,
+        },
+        actions: [
+          {
+            type: 'supabase.insert',
+            table: 'clients',
+            values: {
+              user_id: userId,
+              company_name: input.company_name,
+              brand_name: input.brand_name,
+              industry: input.industry,
+              ceo_name: input.ceo_name,
+              inquiry_source: input.inquiry_source,
+              interest_product: input.interest_product,
+              notes: input.notes,
+              pipeline_stage: 'inquiry',
+            },
+            notes: '고객사 신규 등록',
+          },
+          {
+            type: 'supabase.insert',
+            table: 'contacts',
+            values: {
+              name: input.contact_name,
+              phone: input.contact_phone,
+              email: input.contact_email,
+              is_primary: true,
+            },
+            notes: '담당자 정보가 있으면 기본 담당자로 등록',
+          },
+          {
+            type: 'supabase.insert',
+            table: 'activity_logs',
+            values: {
+              activity_type: 'note',
+              description: '신규 고객 등록',
+            },
+            notes: '고객 생성 이력 기록',
+          },
+        ],
+        confirmationMessage: `${input.company_name} 고객을 등록하려고 합니다. 진행할까요?`,
+        missingFields: companyName ? [] : ['company_name'],
+        riskFlags,
+        duplicateCandidates,
+      })
 
-      if (error) return { error: error.message }
-
-      if (input.contact_name && client) {
-        await supabase.from('contacts').insert({
-          client_id: client.id,
-          name: input.contact_name,
-          phone: input.contact_phone,
-          email: input.contact_email,
-          is_primary: true,
-        })
-      }
-      return { success: true, message: `${input.company_name} 고객이 등록되었습니다.` }
+      return { needsApproval: true, actionPlan: plan }
     }
 
     case 'addActivityLog': {
-      const { data: clients } = await supabase
-        .from('clients')
-        .select('id, company_name')
-        .eq('user_id', userId)
-        .ilike('company_name', `%${input.client_name}%`)
-        .limit(1)
-
-      if (!clients?.length) return { error: `"${input.client_name}" 고객을 찾을 수 없습니다.` }
-
-      await supabase.from('activity_logs').insert({
-        client_id: clients[0].id,
-        user_id: userId,
-        activity_type: input.activity_type,
-        description: input.description,
+      const plan = buildActionPlan({
+        intent: 'log_activity',
+        entities: {
+          client_name: input.client_name,
+          activity_type: input.activity_type,
+          description: input.description,
+        },
+        actions: [
+          {
+            type: 'supabase.insert',
+            table: 'activity_logs',
+            values: {
+              activity_type: input.activity_type,
+              description: input.description,
+            },
+            notes: '고객 활동 로그 생성',
+          },
+          {
+            type: 'supabase.update',
+            table: 'clients',
+            values: {
+              last_contacted_at: new Date().toISOString(),
+            },
+            notes: '최근 연락 일시 갱신',
+          },
+        ],
+        confirmationMessage: `${input.client_name} 고객의 활동 기록을 추가하려고 합니다. 진행할까요?`,
+        missingFields:
+          typeof input.client_name === 'string' &&
+          typeof input.activity_type === 'string' &&
+          typeof input.description === 'string'
+            ? []
+            : ['client_name', 'activity_type', 'description'],
       })
 
-      await supabase
-        .from('clients')
-        .update({ last_contacted_at: new Date().toISOString() })
-        .eq('id', clients[0].id)
-
-      const labels: Record<string, string> = {
-        call: '통화', email_sent: '이메일', kakao: '카카오톡', sms: '문자', meeting: '미팅', note: '메모'
-      }
-      return { success: true, message: `${clients[0].company_name}에 ${labels[input.activity_type as string] || input.activity_type} 기록이 추가되었습니다.` }
+      return { needsApproval: true, actionPlan: plan }
     }
 
     case 'changeStage': {
-      const { data: clients } = await supabase
-        .from('clients')
-        .select('id, company_name')
-        .eq('user_id', userId)
-        .ilike('company_name', `%${input.client_name}%`)
-        .limit(1)
-
-      if (!clients?.length) return { error: `"${input.client_name}" 고객을 찾을 수 없습니다.` }
-
-      await supabase.from('clients').update({ pipeline_stage: input.new_stage }).eq('id', clients[0].id)
-
-      const labels: Record<string, string> = {
-        inquiry: '문의접수', called: '전화완료', email_sent: '메일전송', meeting: '미팅',
-        reviewing: '검토', in_progress: '계약진행중', completed: '계약완료', failed: '실패', on_hold: '보류'
+      const allowedStages = ['inquiry', 'called', 'email_sent', 'meeting', 'meeting_followup', 'reviewing', 'in_progress', 'completed', 'failed', 'on_hold']
+      const riskFlags: ActionPlan['risk_flags'] = []
+      if (typeof input.new_stage !== 'string' || !allowedStages.includes(input.new_stage)) {
+        riskFlags.push('unknown_stage')
       }
-      return { success: true, message: `${clients[0].company_name}의 단계가 "${labels[input.new_stage as string]}"(으)로 변경되었습니다.` }
+
+      const plan = buildActionPlan({
+        intent: 'move_pipeline',
+        entities: {
+          client_name: input.client_name,
+          new_stage: input.new_stage,
+          failure_reason: input.failure_reason,
+          failure_category: input.failure_category,
+        },
+        actions: [
+          {
+            type: 'supabase.update',
+            table: 'clients',
+            values: {
+              pipeline_stage: input.new_stage,
+              failure_reason: input.failure_reason,
+              failure_category: input.failure_category,
+            },
+            notes: '고객 파이프라인 단계 변경',
+          },
+          {
+            type: 'supabase.insert',
+            table: 'activity_logs',
+            values: {
+              activity_type: 'stage_change',
+              description: `파이프라인 단계 변경: ${input.new_stage}`,
+            },
+            notes: '단계 변경 이력 기록',
+          },
+        ],
+        confirmationMessage: `${input.client_name} 고객의 파이프라인 단계를 ${input.new_stage}(으)로 변경하려고 합니다. 진행할까요?`,
+        missingFields:
+          typeof input.client_name === 'string' && typeof input.new_stage === 'string'
+            ? []
+            : ['client_name', 'new_stage'],
+        riskFlags,
+      })
+
+      return { needsApproval: true, actionPlan: plan }
     }
 
     case 'getStats': {
@@ -364,48 +480,51 @@ async function executeTool(name: string, input: Record<string, unknown>, userId:
     }
 
     case 'createSchedule': {
-      const startDateTime = new Date(`${input.date}T${input.start_time || '10:00'}:00`)
-      const endDateTime = new Date(`${input.date}T${input.end_time || '11:00'}:00`)
-
-      // 고객사 검색 (이름으로)
-      let clientId = null
-      if (input.client_name) {
-        const { data: clients } = await supabase
-          .from('clients')
-          .select('id, company_name')
-          .eq('user_id', userId)
-          .ilike('company_name', `%${input.client_name}%`)
-          .limit(1)
-        
-        if (clients?.length) {
-          clientId = clients[0].id
-        }
+      const missingFields: string[] = []
+      if (typeof input.title !== 'string' || input.title.trim().length === 0) {
+        missingFields.push('title')
+      }
+      if (typeof input.date !== 'string' || input.date.trim().length === 0) {
+        missingFields.push('date')
       }
 
-      const { data, error } = await supabase
-        .from('schedules')
-        .insert({
-          user_id: userId,
-          client_id: clientId,
+      const plan = buildActionPlan({
+        intent: 'create_schedule',
+        entities: {
           title: input.title,
+          date: input.date,
+          start_time: input.start_time || '10:00',
+          end_time: input.end_time || '11:00',
           schedule_type: input.schedule_type || 'meeting',
-          description: input.description,
-          start_date: startDateTime.toISOString(),
-          end_date: endDateTime.toISOString(),
+          client_name: input.client_name,
           location: input.location,
           contact_name: input.contact_name,
           contact_phone: input.contact_phone,
-        })
-        .select()
-        .single()
+          description: input.description,
+        },
+        actions: [
+          {
+            type: 'supabase.insert',
+            table: 'schedules',
+            values: {
+              title: input.title,
+              schedule_type: input.schedule_type || 'meeting',
+              description: input.description,
+              start_date: `${input.date}T${input.start_time || '10:00'}:00`,
+              end_date: `${input.date}T${input.end_time || '11:00'}:00`,
+              location: input.location,
+              contact_name: input.contact_name,
+              contact_phone: input.contact_phone,
+            },
+            notes: '신규 일정 등록',
+          },
+        ],
+        confirmationMessage: `${input.date} ${input.start_time || '10:00'} 일정 "${input.title}"을(를) 등록하려고 합니다. 진행할까요?`,
+        missingFields,
+        riskFlags: typeof input.date === 'string' ? [] : ['missing_date'],
+      })
 
-      if (error) return { error: error.message }
-
-      return { 
-        success: true, 
-        message: `✅ "${input.title}" 일정이 ${input.date} ${input.start_time || '10:00'}에 등록되었습니다.`,
-        schedule: data
-      }
+      return { needsApproval: true, actionPlan: plan }
     }
 
     default:
@@ -750,6 +869,12 @@ AI: "계약서를 확인했어요! 📝
 2. 정보가 부족하면 → 필요한 것을 물어보기
 3. 도구 실행 실패하면 → 왜 실패했는지 설명하고 다른 방법 제안
 4. 모르겠으면 → 사용자에게 더 자세히 설명해달라고 요청
+5. 쓰기 작업(생성, 수정, 삭제, 단계변경)을 할 때는 반드시 해당 도구를 호출하세요. 시스템이 사용자에게 확인을 요청합니다.
+
+## 쓰기 작업 규칙
+- 생성/수정/삭제/단계변경 요청은 반드시 도구 호출로 처리
+- 도구 호출 전에 무엇을 하려는지 자연스럽게 설명
+- 최종 확인 플로우는 시스템이 처리
 
 ## 예시 상황별 대응
 
@@ -948,6 +1073,8 @@ AI: → getAllActivities 도구로 전체 활동 조회
       content?: string | null
       tool_calls?: GroqToolCall[]
     } = data.choices?.[0]?.message || {}
+    let pendingActionPlan: ActionPlan | undefined
+    let approvalMessage = ''
 
     console.log('Initial API response:', JSON.stringify(data, null, 2))
 
@@ -985,6 +1112,23 @@ AI: → getAllActivities 도구로 전체 활동 조회
           console.error('Tool execution error:', toolCall.function.name, toolError)
           toolResult = { error: `도구 실행 실패: ${toolCall.function.name}` }
         }
+
+        if (toolResult.needsApproval === true) {
+          const actionPlan = toolResult.actionPlan
+          if (
+            actionPlan &&
+            typeof actionPlan === 'object' &&
+            !Array.isArray(actionPlan) &&
+            'plan_id' in actionPlan &&
+            typeof actionPlan.plan_id === 'string'
+          ) {
+            pendingActionPlan = actionPlan as ActionPlan
+            if (typeof assistantMessage.content === 'string' && assistantMessage.content.trim().length > 0) {
+              approvalMessage = assistantMessage.content
+            }
+          }
+        }
+
         console.log('Tool result:', toolResult)
 
         groqMessages.push({
@@ -994,27 +1138,42 @@ AI: → getAllActivities 도구로 전체 활동 조회
         })
       }
 
+      if (pendingActionPlan) {
+        break
+      }
+
       data = await callGroq(groqMessages, followupSystemPrompt)
       assistantMessage = data.choices?.[0]?.message || {}
       console.log('Loop response:', JSON.stringify(data, null, 2))
+    }
+
+    if (pendingActionPlan) {
+      const response: ChatApiResponse = {
+        content: approvalMessage || '요청하신 작업을 실행하기 전에 확인이 필요합니다. 진행할까요?',
+        actionPlan: pendingActionPlan,
+      }
+      return Response.json(response)
     }
 
     const finalText = assistantMessage.content
     console.log('Final text:', finalText)
 
     if (typeof finalText === 'string' && finalText.trim().length > 0) {
-      return Response.json({ content: finalText })
+      const response: ChatApiResponse = { content: finalText }
+      return Response.json(response)
     }
 
     // 응답이 없으면 질문으로 대체 (절대 포기하지 않음!)
-    return Response.json({ 
+    const fallbackResponse: ChatApiResponse = {
       content: '제가 요청을 정확히 이해했는지 확인하고 싶어요! 😊\n\n어떤 작업을 도와드릴까요?\n- 고객 조회/등록\n- 활동 기록 추가 (통화, 미팅, 이메일 등)\n- 파이프라인 단계 변경\n- 영업 통계 확인\n\n자세히 알려주시면 바로 처리해드릴게요!' 
-    })
+    }
+    return Response.json(fallbackResponse)
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error)
     console.error('API Error:', errMsg, error)
-    return Response.json({ 
+    const errorResponse: ChatApiResponse = {
       content: `앗, 처리 중 문제가 있었어요. 😅\n\n오류: ${errMsg}\n\n다시 한 번 시도해주시겠어요?` 
-    })
+    }
+    return Response.json(errorResponse)
   }
 }
