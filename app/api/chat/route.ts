@@ -655,6 +655,18 @@ export async function POST(req: Request) {
   ]
 
   try {
+    if (!process.env.GROQ_API_KEY) {
+      return Response.json({ 
+        content: 'GROQ_API_KEY 환경변수가 설정되지 않았습니다. Vercel 설정을 확인해주세요.' 
+      }, { status: 200 })
+    }
+
+    if (!userId) {
+      return Response.json({ 
+        content: '로그인이 필요합니다. 다시 로그인해주세요.' 
+      }, { status: 200 })
+    }
+
     const groqTools = tools.map((tool) => ({
       type: 'function' as const,
       function: {
@@ -890,19 +902,26 @@ AI: → getAllActivities 도구로 전체 활동 조회
 
       for (const toolCall of toolCalls) {
         let parsedInput: Record<string, unknown> = {}
-        if (toolCall.function.arguments) {
+        const rawArgs = toolCall.function.arguments
+        if (rawArgs && rawArgs !== 'null' && rawArgs !== '{}') {
           try {
-            const parsed = JSON.parse(toolCall.function.arguments)
+            const parsed = JSON.parse(rawArgs)
             if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
               parsedInput = parsed as Record<string, unknown>
             }
-          } catch (parseError) {
-            console.error('Tool arguments parse error:', parseError)
+          } catch {
+            console.error('Tool arguments parse error:', rawArgs)
           }
         }
 
         console.log('Tool use:', toolCall.function.name, parsedInput)
-        const toolResult = await executeTool(toolCall.function.name, parsedInput, userId)
+        let toolResult: Record<string, unknown>
+        try {
+          toolResult = await executeTool(toolCall.function.name, parsedInput, userId)
+        } catch (toolError) {
+          console.error('Tool execution error:', toolCall.function.name, toolError)
+          toolResult = { error: `도구 실행 실패: ${toolCall.function.name}` }
+        }
         console.log('Tool result:', toolResult)
 
         groqMessages.push({
@@ -929,10 +948,10 @@ AI: → getAllActivities 도구로 전체 활동 조회
       content: '제가 요청을 정확히 이해했는지 확인하고 싶어요! 😊\n\n어떤 작업을 도와드릴까요?\n- 고객 조회/등록\n- 활동 기록 추가 (통화, 미팅, 이메일 등)\n- 파이프라인 단계 변경\n- 영업 통계 확인\n\n자세히 알려주시면 바로 처리해드릴게요!' 
     })
   } catch (error) {
-    console.error('API Error:', error)
-    // 오류가 나도 포기하지 않음!
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.error('API Error:', errMsg, error)
     return Response.json({ 
-      content: '앗, 잠시 처리 중 문제가 있었어요. 😅\n\n다시 한 번 말씀해주시겠어요? 어떤 작업을 도와드릴까요?' 
+      content: `앗, 처리 중 문제가 있었어요. 😅\n\n오류: ${errMsg}\n\n다시 한 번 시도해주시겠어요?` 
     })
   }
 }
