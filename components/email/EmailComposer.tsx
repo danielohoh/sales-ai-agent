@@ -145,7 +145,7 @@ export function EmailComposer({
   const selectedClient = clients.find(c => c.id === selectedClientId)
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="max-w-5xl space-y-6">
       {/* 뒤로가기 */}
       <Link 
         href="/email" 
@@ -180,7 +180,7 @@ export function EmailComposer({
             <div className="space-y-2">
               <Label>고객 선택 *</Label>
               <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="고객을 선택하세요" />
                 </SelectTrigger>
                 <SelectContent>
@@ -196,7 +196,7 @@ export function EmailComposer({
             <div className="space-y-2">
               <Label>템플릿 선택</Label>
               <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="템플릿을 선택하세요" />
                 </SelectTrigger>
                 <SelectContent>
@@ -281,10 +281,11 @@ export function EmailComposer({
             </div>
 
             {/* 액션 버튼 */}
-            <div className="flex gap-2 pt-4">
+            <div className="flex flex-col gap-2 pt-4 sm:flex-row">
               <Button 
                 onClick={handleCopyToClipboard}
                 variant="outline"
+                className="min-h-11 w-full sm:w-auto"
                 disabled={!subject || !body}
               >
                 {copied ? (
@@ -301,6 +302,7 @@ export function EmailComposer({
               </Button>
               <Button 
                 onClick={handleSendEmail}
+                className="min-h-11 w-full sm:w-auto"
                 disabled={isLoading || !selectedClientId || !subject || !naverWorksConnected}
               >
                 <Send className="h-4 w-4 mr-2" />

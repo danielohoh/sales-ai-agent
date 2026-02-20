@@ -10,10 +10,8 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
   LineChart,
   Line,
-  Legend,
 } from 'recharts'
 
 interface PipelineChartProps {
@@ -27,27 +25,29 @@ export function PipelineChart({ data }: PipelineChartProps) {
   )
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={filteredData} layout="vertical" margin={{ left: 20 }}>
-        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-        <XAxis type="number" allowDecimals={false} />
-        <YAxis 
-          type="category" 
-          dataKey="label" 
-          width={80}
-          tick={{ fontSize: 12 }}
-        />
-        <Tooltip 
-          formatter={(value: number | string | undefined) => [`${value ?? 0}개`, '고객 수']}
-          contentStyle={{ borderRadius: '8px' }}
-        />
-        <Bar 
-          dataKey="count" 
-          fill="#3b82f6"
-          radius={[0, 4, 4, 0]}
-        />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="h-[240px] sm:h-[280px] md:h-[300px] w-full overflow-hidden">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={filteredData} layout="vertical" margin={{ top: 8, right: 12, bottom: 8, left: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+          <XAxis type="number" allowDecimals={false} />
+          <YAxis 
+            type="category" 
+            dataKey="label" 
+            width={72}
+            tick={{ fontSize: 12 }}
+          />
+          <Tooltip 
+            formatter={(value: number | string | undefined) => [`${value ?? 0}개`, '고객 수']}
+            contentStyle={{ borderRadius: '8px' }}
+          />
+          <Bar 
+            dataKey="count" 
+            fill="#3b82f6"
+            radius={[0, 4, 4, 0]}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   )
 }
 
@@ -58,39 +58,43 @@ interface SourceChartProps {
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
 
 export function SourceChart({ data }: SourceChartProps) {
+  const chartData = data.map((item, index) => ({
+    ...item,
+    fill: COLORS[index % COLORS.length],
+  }))
+
   if (data.length === 0) {
     return (
-      <div className="h-[300px] flex items-center justify-center text-slate-400">
+      <div className="h-[220px] sm:h-[260px] md:h-[300px] flex items-center justify-center text-slate-400">
         데이터가 없습니다
       </div>
     )
   }
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          innerRadius={60}
-          outerRadius={100}
-          paddingAngle={2}
-          dataKey="count"
-          nameKey="label"
-          label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-          labelLine={false}
-        >
-          {data.map((_, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip 
-          formatter={(value: number | string | undefined) => [`${value ?? 0}개`, '고객 수']}
-          contentStyle={{ borderRadius: '8px' }}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+    <div className="h-[220px] sm:h-[260px] md:h-[300px] w-full overflow-hidden">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="50%"
+            innerRadius={52}
+            outerRadius={88}
+            paddingAngle={2}
+            dataKey="count"
+            nameKey="label"
+            fill="#3b82f6"
+            label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+            labelLine={false}
+          />
+          <Tooltip 
+            formatter={(value: number | string | undefined) => [`${value ?? 0}개`, '고객 수']}
+            contentStyle={{ borderRadius: '8px' }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
   )
 }
 
@@ -100,25 +104,27 @@ interface MonthlyChartProps {
 
 export function MonthlyChart({ data }: MonthlyChartProps) {
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-        <Tooltip 
-          formatter={(value: number | string | undefined) => [`${value ?? 0}개`, '신규 고객']}
-          contentStyle={{ borderRadius: '8px' }}
-        />
-        <Line 
-          type="monotone" 
-          dataKey="count" 
-          stroke="#3b82f6" 
-          strokeWidth={2}
-          dot={{ fill: '#3b82f6', strokeWidth: 2 }}
-          activeDot={{ r: 6 }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="h-[220px] sm:h-[260px] md:h-[300px] w-full overflow-hidden">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+          <Tooltip 
+            formatter={(value: number | string | undefined) => [`${value ?? 0}개`, '신규 고객']}
+            contentStyle={{ borderRadius: '8px' }}
+          />
+          <Line 
+            type="monotone" 
+            dataKey="count" 
+            stroke="#3b82f6" 
+            strokeWidth={2}
+            dot={{ fill: '#3b82f6', strokeWidth: 2 }}
+            activeDot={{ r: 6 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   )
 }
 

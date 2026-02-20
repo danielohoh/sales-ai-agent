@@ -143,7 +143,7 @@ export function KanbanBoard({ clients }: KanbanBoardProps) {
           return (
             <div
               key={stage}
-              className="flex-shrink-0 w-72 flex flex-col bg-slate-100 rounded-lg"
+              className="flex-shrink-0 w-64 md:w-72 flex flex-col bg-slate-100 rounded-lg"
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, stage)}
             >
@@ -231,7 +231,7 @@ export function KanbanBoard({ clients }: KanbanBoardProps) {
         })}
 
         {/* 실패/보류 컬럼 */}
-        <div className="flex-shrink-0 w-72 flex flex-col">
+        <div className="flex-shrink-0 w-64 md:w-72 flex flex-col">
           {/* 실패 */}
           <div
             className="flex-1 bg-red-50 rounded-lg mb-2"

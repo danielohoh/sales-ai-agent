@@ -122,10 +122,10 @@ export function ClientList({ clients }: ClientListProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* 필터 및 버튼 */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col flex-wrap gap-3 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:max-w-sm sm:flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             placeholder="회사명, 담당자 검색..."
@@ -135,7 +135,7 @@ export function ClientList({ clients }: ClientListProps) {
           />
         </div>
         <Select value={stageFilter} onValueChange={setStageFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="h-11 w-full sm:w-40">
             <SelectValue placeholder="파이프라인" />
           </SelectTrigger>
           <SelectContent>
@@ -146,7 +146,7 @@ export function ClientList({ clients }: ClientListProps) {
           </SelectContent>
         </Select>
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="h-11 w-full sm:w-40">
             <SelectValue placeholder="문의 경로" />
           </SelectTrigger>
           <SelectContent>
@@ -158,12 +158,12 @@ export function ClientList({ clients }: ClientListProps) {
         </Select>
 
         {/* 엑셀 버튼들 */}
-        <div className="flex gap-2 ml-auto">
-          <Button variant="outline" size="sm" onClick={() => setShowUploadModal(true)}>
+        <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
+          <Button variant="outline" size="sm" className="min-h-11 w-full sm:w-auto" onClick={() => setShowUploadModal(true)}>
             <Upload className="h-4 w-4 mr-1" />
             엑셀 업로드
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExcelDownload}>
+          <Button variant="outline" size="sm" className="min-h-11 w-full sm:w-auto" onClick={handleExcelDownload}>
             <Download className="h-4 w-4 mr-1" />
             엑셀 다운로드
           </Button>
@@ -171,7 +171,7 @@ export function ClientList({ clients }: ClientListProps) {
       </div>
 
       <div className="overflow-x-auto">
-      <Table>
+      <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
               <TableHead>회사명</TableHead>
@@ -284,7 +284,7 @@ export function ClientList({ clients }: ClientListProps) {
         </Table>
       </div>
 
-      <p className="text-sm text-slate-500">
+      <p className="text-[0.8125rem] text-slate-500">
         {filteredClients.length}개의 결과
       </p>
 

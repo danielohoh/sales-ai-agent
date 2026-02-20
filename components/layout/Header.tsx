@@ -35,28 +35,28 @@ export function Header({
     <header className="sticky top-0 z-30 h-16 border-b border-slate-200 bg-white/95 px-4 sm:px-6">
       <div className="flex h-full items-center justify-between">
         <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-xl text-slate-600 hover:bg-slate-100"
-          onClick={onToggleSidebar}
-          aria-label={isSidebarCollapsed ? '사이드바 열기' : '사이드바 접기'}
-        >
-          {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-        </Button>
-        {title ? (
-          <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
-        ) : (
-          <div className="relative hidden sm:block sm:w-[18rem] md:w-[24rem]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              type="search"
-              placeholder="고객사, 담당자 검색..."
-              className="h-10 rounded-xl border-slate-200 bg-slate-50/70 pl-10"
-            />
-          </div>
-        )}
-      </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden rounded-xl text-slate-600 hover:bg-slate-100 md:inline-flex"
+            onClick={onToggleSidebar}
+            aria-label={isSidebarCollapsed ? '사이드바 열기' : '사이드바 접기'}
+          >
+            {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+          </Button>
+          {title ? (
+            <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
+          ) : (
+            <div className="relative hidden sm:block sm:w-[18rem] md:w-[24rem]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                type="search"
+                placeholder="고객사, 담당자 검색..."
+                className="h-10 rounded-xl border-slate-200 bg-slate-50/70 pl-10"
+              />
+            </div>
+          )}
+        </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
         <DropdownMenu>

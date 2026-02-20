@@ -309,17 +309,24 @@ export function ScheduleDetailModal({
       setIsRecording(false)
     }
 
-    recognitionInstance.start()
-    setRecognition(recognitionInstance)
-    setIsRecording(true)
+    try {
+      recognitionInstance.start()
+      setRecognition(recognitionInstance)
+      setIsRecording(true)
+    } catch {
+      setRecordingError('음성 인식을 시작할 수 없습니다. 마이크 권한을 확인해주세요.')
+    }
   }
 
   const stopRecordingAndSummarize = async () => {
     recognition?.stop()
     setRecognition(null)
+    setIsRecording(false)
     const transcript = liveTranscript.trim()
     if (transcript) {
       await summarizeTranscript(transcript)
+    } else {
+      setRecordingError('음성이 감지되지 않았습니다. 마이크 권한을 확인하거나 직접 텍스트를 입력해주세요.')
     }
   }
 

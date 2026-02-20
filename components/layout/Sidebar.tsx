@@ -76,10 +76,9 @@ const navItems = [
 interface SidebarProps {
   collapsed?: boolean
   onToggle?: () => void
-  onNavClick?: () => void
 }
 
-export function Sidebar({ collapsed = false, onToggle, onNavClick }: SidebarProps) {
+export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const [openMenus, setOpenMenus] = useState<string[]>([])
 
@@ -139,7 +138,6 @@ export function Sidebar({ collapsed = false, onToggle, onNavClick }: SidebarProp
                   {collapsed ? (
                     <Link
                       href={item.href}
-                      onClick={onNavClick}
                       className={cn(
                         'flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                         active
@@ -177,7 +175,6 @@ export function Sidebar({ collapsed = false, onToggle, onNavClick }: SidebarProp
                         <Link
                           key={child.href}
                           href={child.href}
-                          onClick={onNavClick}
                           className={cn(
                             'block rounded-lg px-3 py-2 text-sm transition-colors',
                             pathname === child.href
@@ -194,7 +191,6 @@ export function Sidebar({ collapsed = false, onToggle, onNavClick }: SidebarProp
               ) : (
                 <Link
                   href={item.href}
-                  onClick={onNavClick}
                   className={cn(
                     'flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                     collapsed ? 'justify-center' : 'gap-3',

@@ -59,12 +59,12 @@ export function TasksPageContent({ reminders }: TasksPageContentProps) {
     const dDay = getDday(item.due_date)
 
     return (
-      <div key={item.id} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3">
+      <div key={item.id} className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-4">
         <Checkbox
           checked={item.is_completed}
           disabled={pendingIds.includes(item.id)}
           onCheckedChange={(value) => handleToggle(item.id, value === true)}
-          className="mt-0.5"
+          className="mt-0.5 h-5 w-5"
         />
         <div className="flex-1 min-w-0">
           <p className={`text-sm font-medium ${item.is_completed ? 'line-through text-slate-400' : 'text-slate-800'}`}>

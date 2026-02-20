@@ -21,7 +21,6 @@ import {
   User,
   Phone,
   Mail,
-  Calendar,
   Pencil,
   MessageSquare,
   FileText,
@@ -48,12 +47,10 @@ export function ClientDetail({ client }: ClientDetailProps) {
   const sourceInfo = client.inquiry_source 
     ? INQUIRY_SOURCES[client.inquiry_source as InquirySource]
     : null
-  const primaryContact = client.contacts?.find(c => c.is_primary) || client.contacts?.[0]
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
           <Link 
             href="/clients" 
@@ -74,28 +71,28 @@ export function ClientDetail({ client }: ClientDetailProps) {
         </div>
 
         {/* 빠른 액션 */}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowCallModal(true)}>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          <Button variant="outline" size="sm" className="min-h-11 w-full sm:w-auto" onClick={() => setShowCallModal(true)}>
             <Phone className="h-4 w-4 mr-2" />
             통화 기록
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="min-h-11 w-full sm:w-auto">
             <Mail className="h-4 w-4 mr-2" />
             이메일
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowKakaoModal(true)}>
+          <Button variant="outline" size="sm" className="min-h-11 w-full sm:w-auto" onClick={() => setShowKakaoModal(true)}>
             <MessageCircle className="h-4 w-4 mr-2" />
             카톡
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowSmsModal(true)}>
+          <Button variant="outline" size="sm" className="min-h-11 w-full sm:w-auto" onClick={() => setShowSmsModal(true)}>
             <MessageSquare className="h-4 w-4 mr-2" />
             문자
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowStageModal(true)}>
+          <Button variant="outline" size="sm" className="min-h-11 w-full sm:w-auto" onClick={() => setShowStageModal(true)}>
             단계 변경
           </Button>
-          <Link href={`/clients/${client.id}/edit`}>
-            <Button variant="outline" size="sm">
+          <Link href={`/clients/${client.id}/edit`} className="w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="min-h-11 w-full sm:w-auto">
               <Pencil className="h-4 w-4 mr-2" />
               수정
             </Button>
@@ -104,7 +101,7 @@ export function ClientDetail({ client }: ClientDetailProps) {
       </div>
 
       {/* 탭 콘텐츠 */}
-      <Tabs defaultValue="info" className="space-y-4">
+      <Tabs defaultValue="info" className="space-y-6">
         <TabsList>
           <TabsTrigger value="info">기본 정보</TabsTrigger>
           <TabsTrigger value="timeline">활동 타임라인</TabsTrigger>
@@ -112,7 +109,7 @@ export function ClientDetail({ client }: ClientDetailProps) {
         </TabsList>
 
         {/* 기본 정보 탭 */}
-        <TabsContent value="info" className="space-y-4">
+        <TabsContent value="info" className="space-y-6">
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             {/* 회사 정보 */}
             <Card className="col-span-2">

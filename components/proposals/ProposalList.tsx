@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
@@ -74,14 +73,14 @@ export function ProposalList({ proposals }: ProposalListProps) {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-slate-500">
             총 {proposals.length}개의 제안서
           </p>
         </div>
-        <Link href="/proposals/new">
-          <Button>
+        <Link href="/proposals/new" className="w-full sm:w-auto">
+          <Button className="min-h-11 w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             새 제안서
           </Button>
@@ -90,8 +89,8 @@ export function ProposalList({ proposals }: ProposalListProps) {
 
       {/* 제안서 테이블 */}
       <Card>
-        <CardContent className="p-0">
-          <Table>
+        <CardContent className="overflow-x-auto p-0">
+          <Table className="min-w-[720px]">
             <TableHeader>
               <TableRow>
                 <TableHead>제안서명</TableHead>

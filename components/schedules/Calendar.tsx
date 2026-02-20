@@ -91,14 +91,14 @@ export function Calendar({ schedules, onDateClick, onScheduleClick }: CalendarPr
               key={idx}
               onClick={() => onDateClick(day)}
               className={cn(
-                'min-h-[112px] p-1 border-b border-r border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors',
+                'min-h-[96px] p-1 md:min-h-[112px] md:p-2 border-b border-r border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors',
                 !isCurrentMonth && 'bg-gray-50',
                 idx % 7 === 6 && 'border-r-0'
               )}
             >
               <div
                 className={cn(
-                  'text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center rounded-full',
+                  'mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium md:h-7 md:w-7 md:text-sm',
                   isToday && 'bg-blue-600 text-white',
                   !isToday && dayOfWeek === 0 && 'text-red-500',
                   !isToday && dayOfWeek === 6 && 'text-blue-500',
@@ -120,7 +120,7 @@ export function Calendar({ schedules, onDateClick, onScheduleClick }: CalendarPr
                         onScheduleClick(schedule)
                       }}
                       className={cn(
-                        'text-xs px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80',
+                        'truncate rounded px-1 py-0.5 text-[10px] cursor-pointer hover:opacity-80 md:px-1.5 md:text-xs',
                         typeInfo.bgColor,
                         typeInfo.color,
                         schedule.status === 'completed' && 'opacity-60 line-through',

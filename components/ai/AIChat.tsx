@@ -204,15 +204,15 @@ export function AIChat({ userId }: AIChatProps) {
         </div>
 
         {/* 입력 영역 */}
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleSubmit} className="flex w-full gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="메시지를 입력하세요..."
             disabled={isLoading}
-            className="flex-1"
+            className="h-11 flex-1"
           />
-          <Button type="submit" disabled={isLoading || !input.trim()}>
+          <Button type="submit" className="h-11 w-11 shrink-0 p-0" disabled={isLoading || !input.trim()}>
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

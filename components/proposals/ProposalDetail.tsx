@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { 
   ArrowLeft, 
   Pencil, 
@@ -74,7 +73,7 @@ export function ProposalDetail({ proposal }: ProposalDetailProps) {
   return (
     <div className="max-w-4xl space-y-6">
       {/* 헤더 */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
           <Link 
             href="/proposals" 
@@ -95,14 +94,14 @@ export function ProposalDetail({ proposal }: ProposalDetailProps) {
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <Link href={`/proposals/${proposal.id}/edit`}>
-            <Button variant="outline">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Link href={`/proposals/${proposal.id}/edit`} className="w-full sm:w-auto">
+            <Button variant="outline" className="min-h-11 w-full sm:w-auto">
               <Pencil className="h-4 w-4 mr-2" />
               수정
             </Button>
           </Link>
-          <Button>
+          <Button className="min-h-11 w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             PDF 다운로드
           </Button>
@@ -230,7 +229,7 @@ export function ProposalDetail({ proposal }: ProposalDetailProps) {
           </CardHeader>
           <CardContent>
             {content.pricing.items && content.pricing.items.length > 0 && (
-              <div className="border rounded-lg overflow-hidden mb-4">
+              <div className="mb-4 overflow-x-auto rounded-lg border">
                 <table className="w-full">
                   <thead className="bg-slate-50">
                     <tr>

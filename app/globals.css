@@ -8,6 +8,14 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-noto-sans-kr);
   --font-mono: var(--font-geist-mono);
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -47,8 +55,8 @@
 }
 
 :root {
-  --radius: 0.875rem;
-  --background: oklch(0.985 0.003 248);
+  --radius: 0.75rem;
+  --background: oklch(0.984 0.002 248);
   --foreground: oklch(0.275 0.015 257);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.275 0.015 257);
@@ -63,7 +71,7 @@
   --accent: oklch(0.96 0.006 252);
   --accent-foreground: oklch(0.36 0.015 257);
   --destructive: oklch(0.62 0.21 23);
-  --border: oklch(0.915 0.006 252);
+  --border: oklch(0.94 0.004 252);
   --input: oklch(0.89 0.008 252);
   --ring: oklch(0.6 0.14 254);
   --chart-1: oklch(0.66 0.16 252);
@@ -123,11 +131,27 @@
     @apply bg-background text-foreground;
     min-height: 100vh;
     letter-spacing: -0.008em;
-    line-height: 1.45;
+    line-height: 1.5;
+    font-size: 15px;
   }
 
   ::selection {
     background-color: oklch(0.88 0.05 253);
     color: oklch(0.3 0.015 257);
+  }
+}
+
+@layer utilities {
+  .text-h1 { @apply text-[1.75rem] font-bold leading-tight tracking-tight; }
+  .text-h2 { @apply text-[1.375rem] font-semibold leading-snug tracking-tight; }
+  .text-h3 { @apply text-[1.125rem] font-semibold leading-snug; }
+  .text-body { @apply text-[0.9375rem] font-normal leading-relaxed; }
+  .text-caption { @apply text-[0.8125rem] font-normal text-muted-foreground; }
+
+  .shadow-card {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  }
+  .shadow-card-hover {
+    box-shadow: 0 4px 12px 0 rgb(0 0 0 / 0.06), 0 1px 3px -1px rgb(0 0 0 / 0.04);
   }
 }

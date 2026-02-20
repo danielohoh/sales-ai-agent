@@ -37,9 +37,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="p-6 pb-0 text-center md:p-8 md:pb-0">
           <div className="flex justify-center mb-4">
             <div className="flex items-center gap-2">
               <Building2 className="h-10 w-10 text-blue-600" />
@@ -56,7 +56,7 @@ export default function LoginPage() {
               : '계정 정보를 입력하여 로그인하세요'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 pt-6 md:p-8 md:pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
@@ -112,7 +112,7 @@ export default function LoginPage() {
                 setIsSignUp(!isSignUp)
                 setError(null)
               }}
-              className="text-sm text-blue-600 hover:underline"
+              className="inline-flex min-h-11 items-center text-sm text-blue-600 hover:underline"
             >
               {isSignUp 
                 ? '이미 계정이 있으신가요? 로그인' 

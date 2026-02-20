@@ -407,11 +407,11 @@ export function ClientForm({ client, isEdit = false }: ClientFormProps) {
       </Card>
 
       {/* 제출 버튼 */}
-      <div className="flex gap-4">
-        <Button type="submit" disabled={isLoading}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+        <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={isLoading}>
           {isLoading ? '저장 중...' : (isEdit ? '수정하기' : '등록하기')}
         </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()}>
+        <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => router.back()}>
           취소
         </Button>
       </div>

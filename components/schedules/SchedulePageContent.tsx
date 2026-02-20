@@ -23,11 +23,10 @@ export function SchedulePageContent() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleWithClient | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [selectedTime, setSelectedTime] = useState<string | null>(null)
 
   // 필터 상태
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
-  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [currentMonth] = useState(new Date())
 
   // 데이터 로드
   const loadData = async () => {
@@ -74,8 +73,7 @@ export function SchedulePageContent() {
   }
 
   // 빈 시간대 클릭
-  const handleTimeSlotClick = (time: string) => {
-    setSelectedTime(time)
+  const handleTimeSlotClick = (_time: string) => {
     setShowFormModal(true)
   }
 
@@ -97,7 +95,6 @@ export function SchedulePageContent() {
     setShowFormModal(false)
     setSelectedSchedule(null)
     setSelectedDate(null)
-    setSelectedTime(null)
   }
 
   const handleCloseDetailModal = () => {
@@ -113,12 +110,12 @@ export function SchedulePageContent() {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">일정 관리</h1>
           <p className="text-slate-500">미팅, 전화, 데모 등 영업 일정을 관리하세요.</p>
         </div>
-        <Button onClick={handleNewSchedule}>
+        <Button onClick={handleNewSchedule} className="min-h-11 w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           새 일정
         </Button>

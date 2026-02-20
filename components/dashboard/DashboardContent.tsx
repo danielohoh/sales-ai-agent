@@ -11,17 +11,12 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-  Users,
-  UserCheck,
-  TrendingUp,
   AlertTriangle,
-  Phone,
-  Mail,
   Calendar,
   ArrowRight,
   Building2,
 } from 'lucide-react'
-import { PipelineChart, SourceChart, MonthlyChart, ConversionFunnel } from './Charts'
+import { PipelineChart, SourceChart, MonthlyChart } from './Charts'
 import { TodaySchedulesWidget } from './TodaySchedulesWidget'
 import { TodoListWidget } from './TodoListWidget'
 import { PIPELINE_STAGES, ACTIVITY_TYPES } from '@/lib/constants'
@@ -88,80 +83,52 @@ export function DashboardContent({ stats, activities, reminders, todaySchedules,
   const { summary, pipelineStats, sourceStats, monthlyStats, overdueClients } = stats
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* 페이지 헤더 */}
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold text-slate-900">대시보드</h1>
-        <p className="text-sm text-slate-500">영업 현황을 한눈에 확인하세요.</p>
+        <h1 className="text-[1.75rem] font-bold tracking-tight text-slate-900">대시보드</h1>
+        <p className="text-[0.8125rem] text-slate-500">영업 현황을 한눈에 확인하세요.</p>
       </div>
 
       {/* 요약 카드 4열 */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-4 md:gap-4">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">전체 고객</p>
-                <p className="text-2xl font-bold">{summary.totalClients}</p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                <Users className="h-5 w-5 text-slate-600" />
-              </div>
-            </div>
+          <CardContent className="pt-5 pb-5">
+            <p className="text-[0.8125rem] text-slate-500 mb-1">전체 고객</p>
+            <p className="text-[1.75rem] font-bold tracking-tight">{summary.totalClients}</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">진행 중</p>
-                <p className="text-2xl font-bold">{summary.activeClients}</p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-slate-600" />
-              </div>
-            </div>
+          <CardContent className="pt-5 pb-5">
+            <p className="text-[0.8125rem] text-slate-500 mb-1">진행 중</p>
+            <p className="text-[1.75rem] font-bold tracking-tight">{summary.activeClients}</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">계약 완료</p>
-                <p className="text-2xl font-bold">{summary.completedClients}</p>
-                <p className="text-xs text-green-600">전환율 {summary.conversionRate}%</p>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                <UserCheck className="h-5 w-5 text-slate-600" />
-              </div>
-            </div>
+          <CardContent className="pt-5 pb-5">
+            <p className="text-[0.8125rem] text-slate-500 mb-1">계약 완료</p>
+            <p className="text-[1.75rem] font-bold tracking-tight">{summary.completedClients}</p>
+            <p className="text-[0.75rem] text-green-600 mt-0.5">전환율 {summary.conversionRate}%</p>
           </CardContent>
         </Card>
 
-        <Card className={summary.needsAttention > 0 ? 'border-orange-200 bg-orange-50' : ''}>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">주의 필요</p>
-                <p className="text-3xl font-bold text-orange-600">{summary.needsAttention}</p>
-                <p className="text-xs text-slate-500">7일 이상 미연락</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
+        <Card className={summary.needsAttention > 0 ? 'border-orange-200 bg-orange-50/50' : ''}>
+          <CardContent className="pt-5 pb-5">
+            <p className="text-[0.8125rem] text-slate-500 mb-1">주의 필요</p>
+            <p className="text-[1.75rem] font-bold tracking-tight text-orange-600">{summary.needsAttention}</p>
+            <p className="text-[0.75rem] text-slate-400 mt-0.5">7일 이상 미연락</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        <div className="lg:col-span-2 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+        <div className="space-y-6">
           {/* 파이프라인 현황 */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <div>
+              <div className="space-y-1">
                 <CardTitle>파이프라인 현황</CardTitle>
                 <CardDescription>단계별 고객 분포</CardDescription>
               </div>
@@ -178,7 +145,7 @@ export function DashboardContent({ stats, activities, reminders, todaySchedules,
 
           {/* 월별 신규 고객 추이 */}
           <Card>
-            <CardHeader>
+            <CardHeader className="space-y-1">
               <CardTitle>월별 신규 고객</CardTitle>
               <CardDescription>최근 6개월 신규 고객 추이</CardDescription>
             </CardHeader>
@@ -188,7 +155,7 @@ export function DashboardContent({ stats, activities, reminders, todaySchedules,
           </Card>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {/* 오늘 일정 */}
           {todaySchedules && <TodaySchedulesWidget schedules={todaySchedules} />}
 
@@ -273,18 +240,18 @@ export function DashboardContent({ stats, activities, reminders, todaySchedules,
       {/* 최근 활동 */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <div>
+          <div className="space-y-1">
             <CardTitle>최근 활동</CardTitle>
             <CardDescription>최근 기록된 활동 내역</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           {activities && activities.length > 0 ? (
-            <div className="space-y-4">
+            <div className="divide-y divide-slate-100">
               {activities.map((activity) => {
                 const activityInfo = ACTIVITY_TYPES[activity.activity_type as ActivityType]
                 return (
-                  <div key={activity.id} className="flex items-start gap-4">
+                  <div key={activity.id} className="flex items-start gap-4 py-3 first:pt-0 last:pb-0">
                     <div className="text-2xl">{activityInfo?.icon || '📝'}</div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">

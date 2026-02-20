@@ -24,7 +24,6 @@ import {
   Eye, 
   Pencil, 
   Trash2,
-  Phone,
   Calendar,
   FileText,
   Clock,
@@ -82,7 +81,7 @@ export function EmailTemplateList({ templates }: EmailTemplateListProps) {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-slate-500">
             상황별 이메일 템플릿을 관리하세요. 변수를 사용하여 자동으로 고객 정보가 채워집니다.
@@ -90,7 +89,7 @@ export function EmailTemplateList({ templates }: EmailTemplateListProps) {
         </div>
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="min-h-11 w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               새 템플릿
             </Button>

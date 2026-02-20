@@ -292,7 +292,7 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
   }
 
   return (
-    <div className="grid h-[calc(100vh-132px)] grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+    <div className="grid min-h-[calc(100vh-132px)] grid-cols-1 gap-4 lg:h-[calc(100vh-132px)] lg:grid-cols-[280px_1fr]">
       <aside className="hidden lg:block">
         <Card className="h-full border-slate-200/80 bg-white/90">
           <CardHeader className="pb-2">
@@ -350,7 +350,7 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
         </Card>
       </aside>
 
-      <section className="flex min-h-0 flex-col rounded-2xl border border-slate-200/80 bg-white/92">
+      <section className="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200/80 bg-white/92">
         <div className="border-b border-slate-200/80 px-5 py-3 text-sm font-semibold text-slate-700">
           AI 영업 비서
         </div>
@@ -504,6 +504,7 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
               type="button"
               variant="outline"
               size="icon"
+              className="h-11 w-11 shrink-0"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
               title="파일 첨부 (이미지, PDF)"
@@ -518,7 +519,11 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
               disabled={isLoading}
               className="h-11 flex-1"
             />
-            <Button type="submit" disabled={isLoading || (!input.trim() && attachedFiles.length === 0)}>
+            <Button
+              type="submit"
+              className="h-11 shrink-0 px-4"
+              disabled={isLoading || (!input.trim() && attachedFiles.length === 0)}
+            >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (

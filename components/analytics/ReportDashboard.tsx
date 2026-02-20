@@ -99,13 +99,13 @@ export function ReportDashboard({ data, currentPeriod }: ReportDashboardProps) {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-slate-500">{data.periodLabel} 영업 성과 리포트</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
           <Select value={currentPeriod} onValueChange={handlePeriodChange}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="h-11 w-full sm:w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -115,8 +115,8 @@ export function ReportDashboard({ data, currentPeriod }: ReportDashboardProps) {
               <SelectItem value="year">올해</SelectItem>
             </SelectContent>
           </Select>
-          <Link href="/analytics/failure">
-            <Button variant="outline">
+          <Link href="/analytics/failure" className="w-full sm:w-auto">
+            <Button variant="outline" className="min-h-11 w-full sm:w-auto">
               실패 분석 <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </Link>
