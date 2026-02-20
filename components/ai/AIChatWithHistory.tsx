@@ -292,8 +292,8 @@ export function AIChatWithHistory({ userId }: AIChatWithHistoryProps) {
   }
 
   return (
-    <div className="grid h-[calc(100vh-132px)] grid-cols-[280px_1fr] gap-4 max-lg:grid-cols-1">
-      <aside className="max-lg:hidden">
+    <div className="grid h-[calc(100vh-132px)] grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+      <aside className="hidden lg:block">
         <Card className="h-full border-slate-200/80 bg-white/90">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">

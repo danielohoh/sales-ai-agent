@@ -196,7 +196,7 @@ export function ClientForm({ client, isEdit = false }: ClientFormProps) {
           <CardDescription>고객사의 기본 정보를 입력하세요.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="company_name">회사명 *</Label>
               <Input
@@ -218,7 +218,7 @@ export function ClientForm({ client, isEdit = false }: ClientFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="industry">업종</Label>
               <Input
@@ -240,7 +240,7 @@ export function ClientForm({ client, isEdit = false }: ClientFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="ceo_name">대표자명</Label>
               <Input
@@ -268,7 +268,7 @@ export function ClientForm({ client, isEdit = false }: ClientFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="interest_product">관심 제품/서비스</Label>
               <Input
@@ -359,7 +359,7 @@ export function ClientForm({ client, isEdit = false }: ClientFormProps) {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>이름 *</Label>
                   <Input
@@ -382,7 +382,7 @@ export function ClientForm({ client, isEdit = false }: ClientFormProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>이메일</Label>
                   <Input

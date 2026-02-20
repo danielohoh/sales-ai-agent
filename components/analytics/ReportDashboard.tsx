@@ -124,7 +124,7 @@ export function ReportDashboard({ data, currentPeriod }: ReportDashboardProps) {
       </div>
 
       {/* 핵심 지표 카드 */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -187,8 +187,7 @@ export function ReportDashboard({ data, currentPeriod }: ReportDashboardProps) {
       </div>
 
       {/* 차트 영역 */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* 파이프라인 현황 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <Card>
           <CardHeader>
             <CardTitle>파이프라인 현황</CardTitle>
@@ -244,8 +243,7 @@ export function ReportDashboard({ data, currentPeriod }: ReportDashboardProps) {
       </div>
 
       {/* 활동 요약 & 문의 경로 */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* 활동 요약 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <Card>
           <CardHeader>
             <CardTitle>활동 요약</CardTitle>

@@ -47,7 +47,7 @@ export function Header({
         {title ? (
           <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
         ) : (
-          <div className="relative w-[18rem] sm:w-[24rem]">
+          <div className="relative hidden sm:block sm:w-[18rem] md:w-[24rem]">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               type="search"

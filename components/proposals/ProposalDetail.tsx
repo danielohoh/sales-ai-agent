@@ -118,7 +118,7 @@ export function ProposalDetail({ proposal }: ProposalDetailProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-slate-500">회사명</p>

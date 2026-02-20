@@ -125,9 +125,9 @@ export function SchedulePageContent() {
       </div>
 
       {/* 메인 컨텐츠 */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
         {/* 캘린더 */}
-        <div className="col-span-3">
+        <div className="md:col-span-3">
           {loading ? (
             <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
               로딩 중...

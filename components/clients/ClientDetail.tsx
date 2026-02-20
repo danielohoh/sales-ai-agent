@@ -122,7 +122,7 @@ export function ClientDetail({ client }: ClientDetailProps) {
                   회사 정보
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4">
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-slate-500">업종</p>
                   <p className="font-medium">{client.industry || '-'}</p>

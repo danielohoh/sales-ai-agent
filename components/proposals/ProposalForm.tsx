@@ -193,7 +193,7 @@ export function ProposalForm({ clients, initialClientId, proposal }: ProposalFor
           <CardDescription>제안서를 받을 고객과 제목을 설정하세요.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>고객 선택 *</Label>
               <Select value={selectedClientId} onValueChange={setSelectedClientId}>

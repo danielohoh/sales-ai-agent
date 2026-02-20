@@ -156,10 +156,8 @@ export function DashboardContent({ stats, activities, reminders, todaySchedules,
         </Card>
       </div>
 
-      {/* 메인 콘텐츠 그리드 */}
-      <div className="grid grid-cols-3 gap-6">
-        {/* 왼쪽: 파이프라인 + 전환 퍼널 */}
-        <div className="col-span-2 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="lg:col-span-2 space-y-5">
           {/* 파이프라인 현황 */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
@@ -190,7 +188,6 @@ export function DashboardContent({ stats, activities, reminders, todaySchedules,
           </Card>
         </div>
 
-        {/* 오른쪽: 사이드 패널 */}
         <div className="space-y-5">
           {/* 오늘 일정 */}
           {todaySchedules && <TodaySchedulesWidget schedules={todaySchedules} />}

@@ -86,7 +86,7 @@ export function FailureAnalysis({ data }: FailureAnalysisProps) {
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -138,8 +138,7 @@ export function FailureAnalysis({ data }: FailureAnalysisProps) {
       </div>
 
       {/* 차트 영역 */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* 카테고리별 분포 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <Card>
           <CardHeader>
             <CardTitle>실패 사유 분포</CardTitle>

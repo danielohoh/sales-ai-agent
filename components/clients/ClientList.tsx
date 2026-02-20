@@ -170,7 +170,7 @@ export function ClientList({ clients }: ClientListProps) {
         </div>
       </div>
 
-      {/* 테이블 */}
+      <div className="overflow-x-auto">
       <Table>
           <TableHeader>
             <TableRow>
@@ -282,8 +282,8 @@ export function ClientList({ clients }: ClientListProps) {
             )}
           </TableBody>
         </Table>
+      </div>
 
-      {/* 결과 수 */}
       <p className="text-sm text-slate-500">
         {filteredClients.length}개의 결과
       </p>

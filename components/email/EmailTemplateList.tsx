@@ -130,7 +130,7 @@ export function EmailTemplateList({ templates }: EmailTemplateListProps) {
             <span className="text-sm text-slate-500">- {description}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {(groupedTemplates[type] || []).map((template) => (
               <Card key={template.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-2">
