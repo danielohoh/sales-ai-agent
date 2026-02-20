@@ -499,10 +499,17 @@ export async function getMailList(
   }
 
   const json = await response.json()
+  const mails = json.mails || json.mailList || json.items || json.messages || json.children || []
+
+  if (!Array.isArray(mails) || (mails.length === 0 && json && typeof json === 'object' && Object.keys(json).length > 0 && !json.mails)) {
+    const keys = Object.keys(json).join(', ')
+    return { data: null as MailListResponse | null, error: `메일 응답 키: [${keys}]. 데이터 파싱 확인 필요.` }
+  }
+
   return {
     data: {
-      mails: json.mails || [],
-      responseMetaData: json.responseMetaData || undefined,
+      mails,
+      responseMetaData: json.responseMetaData || json.pagingInfo || undefined,
     } as MailListResponse,
     error: null,
   }
@@ -539,5 +546,44 @@ export async function getMailDetail(mailId: string) {
   }
 
   const json = await response.json()
-  return { data: json as MailItem, error: null }
+  const mail = json.mailId ? json : (json.mail || json.message || json.item || null)
+
+  if (!mail) {
+    const keys = Object.keys(json).join(', ')
+    return { data: null as MailItem | null, error: `메일 상세 응답 키: [${keys}]. 데이터 파싱 확인 필요.` }
+  }
+
+  return { data: mail as MailItem, error: null }
+}
+
+// 메일 삭제
+export async function deleteMail(mailId: string) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '인증이 필요합니다.' }
+
+  const senderUserId = process.env.NAVER_WORKS_MAIL_SENDER
+  if (!senderUserId) return { error: 'NAVER_WORKS_MAIL_SENDER 설정이 필요합니다.' }
+
+  const tokenResult = await getNaverWorksAccessTokenForUser(user.id)
+  if (tokenResult.error || !tokenResult.accessToken) {
+    return { error: tokenResult.error || '토큰 발급 실패' }
+  }
+
+  const response = await fetch(
+    `https://www.worksapis.com/v1.0/users/${encodeURIComponent(senderUserId)}/mail/${encodeURIComponent(mailId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${tokenResult.accessToken}`,
+      },
+    }
+  )
+
+  if (!response.ok) {
+    const text = await response.text()
+    return { error: `메일 삭제 실패 (${response.status}): ${text}` }
+  }
+
+  return { error: null }
 }

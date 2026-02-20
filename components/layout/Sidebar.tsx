@@ -19,29 +19,22 @@ import {
   PanelLeftOpen,
   PanelLeftClose,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { EmailFolderNav } from '@/components/email/EmailFolderNav'
 
-const navItems = [
-  { 
-    href: '/dashboard', 
-    label: '대시보드', 
-    icon: LayoutDashboard 
-  },
-  { 
-    href: '/ai-assistant', 
-    label: 'AI 영업 비서', 
-    icon: Sparkles 
-  },
-  { 
-    href: '/schedules', 
-    label: '일정 관리', 
-    icon: Calendar 
-  },
-  {
-    href: '/tasks',
-    label: '할일',
-    icon: ListTodo,
-  },
+type NavItem = {
+  href: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  children?: { href: string; label: string }[]
+  emailFolders?: boolean
+}
+
+const navItems: NavItem[] = [
+  { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
+  { href: '/ai-assistant', label: 'AI 영업 비서', icon: Sparkles },
+  { href: '/schedules', label: '일정 관리', icon: Calendar },
+  { href: '/tasks', label: '할일', icon: ListTodo },
   { 
     href: '/clients', 
     label: '고객관리', 
@@ -55,10 +48,7 @@ const navItems = [
     href: '/email', 
     label: '이메일', 
     icon: Mail,
-    children: [
-      { href: '/email', label: '메일함' },
-      { href: '/email/compose', label: '메일 작성' },
-    ]
+    emailFolders: true,
   },
   { href: '/proposals', label: '제안서', icon: FileText },
   { 
@@ -81,6 +71,15 @@ interface SidebarProps {
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const [openMenus, setOpenMenus] = useState<string[]>([])
+
+  useEffect(() => {
+    navItems.forEach(item => {
+      const expandable = (item.children && item.children.length > 0) || item.emailFolders
+      if (expandable && pathname.startsWith(item.href) && !openMenus.includes(item.href)) {
+        setOpenMenus(prev => [...prev, item.href])
+      }
+    })
+  }, [pathname, openMenus])
 
   const toggleMenu = (href: string) => {
     setOpenMenus(prev => 
@@ -127,7 +126,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       <nav className="flex-1 space-y-1.5">
         {navItems.map((item) => {
           const Icon = item.icon
-          const hasChildren = item.children && item.children.length > 0
+          const hasChildren = (item.children && item.children.length > 0) || item.emailFolders
           const isOpen = openMenus.includes(item.href)
           const active = isActive(item.href)
 
@@ -171,20 +170,24 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                   )}
                   {isOpen && !collapsed && (
                     <div className="ml-8 mt-1.5 space-y-1">
-                      {item.children.map((child) => (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          className={cn(
-                            'block rounded-lg px-3 py-2 text-sm transition-colors',
-                            pathname === child.href
-                              ? 'bg-slate-100 text-slate-900'
-                              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                          )}
-                        >
-                          {child.label}
-                        </Link>
-                      ))}
+                      {item.emailFolders ? (
+                        <EmailFolderNav />
+                      ) : (
+                        item.children?.map((child) => (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            className={cn(
+                              'block rounded-lg px-3 py-2 text-sm transition-colors',
+                              pathname === child.href
+                                ? 'bg-slate-100 text-slate-900'
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                            )}
+                          >
+                            {child.label}
+                          </Link>
+                        ))
+                      )}
                     </div>
                   )}
                 </>
