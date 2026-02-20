@@ -560,44 +560,13 @@ export async function POST(req: Request) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY
   const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
 
-  // 파일이 있으면 Groq(OpenAI 호환) content 배열로 구성
-  const buildUserContent = (text: string, attachedFiles?: AttachedFile[]): string | GroqContentPart[] => {
+  const buildUserContent = (text: string, attachedFiles?: AttachedFile[]): string => {
     if (!attachedFiles || attachedFiles.length === 0) {
-      return text
+      return text || ''
     }
-
-    const content: GroqContentPart[] = []
-
-    const nonImageFiles: string[] = []
-
-    // 이미지 파일 추가
-    for (const file of attachedFiles) {
-      if (file.type.startsWith('image/')) {
-        content.push({
-          type: 'image_url',
-          image_url: {
-            url: `data:${file.type};base64,${file.data}`,
-          }
-        })
-      } else {
-        nonImageFiles.push(`${file.name} (${file.type})`)
-      }
-    }
-
-    // Groq에서 직접 처리하지 않는 파일은 텍스트 컨텍스트로 전달
-    if (nonImageFiles.length > 0) {
-      content.push({
-        type: 'text',
-        text: `첨부 파일 정보: ${nonImageFiles.join(', ')}`,
-      })
-    }
-
-    content.push({
-      type: 'text',
-      text: text || '첨부된 파일을 분석해주세요. 이 파일을 보고 제가 어떤 업무를 원하는지 예측해서 질문해주세요.',
-    })
-
-    return content
+    const fileNames = attachedFiles.map(f => f.name).join(', ')
+    const userText = text || '첨부된 파일을 분석해주세요.'
+    return `[첨부 파일: ${fileNames}]\n${userText}`
   }
 
   // 도구 정의
@@ -1028,23 +997,35 @@ AI: → getAllActivities 도구로 전체 활동 조회
       return data
     }
 
-    const hasImages = files && (files as AttachedFile[]).some((f: AttachedFile) => f.type.startsWith('image/'))
-    if (hasImages && GEMINI_API_KEY) {
+    const supportedMediaTypes = (f: AttachedFile) =>
+      f.type.startsWith('image/') || f.type === 'application/pdf'
+    const hasMediaFiles = files && (files as AttachedFile[]).some(supportedMediaTypes)
+
+    if (hasMediaFiles && GEMINI_API_KEY) {
       const lastMsg = groqMessages[groqMessages.length - 1]
-      const originalText = typeof lastMsg.content === 'string'
-        ? lastMsg.content
-        : Array.isArray(lastMsg.content)
-          ? (lastMsg.content as GroqContentPart[]).filter(p => p.type === 'text').map(p => (p as { type: 'text'; text: string }).text).join('\n')
-          : ''
+      const originalText = typeof lastMsg.content === 'string' ? lastMsg.content : ''
 
       const geminiParts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = []
       for (const file of files as AttachedFile[]) {
-        if (file.type.startsWith('image/')) {
+        if (supportedMediaTypes(file)) {
           geminiParts.push({ inline_data: { mime_type: file.type, data: file.data } })
         }
       }
+
+      const userContext = originalText.replace(/^\[첨부 파일:.*?\]\n?/, '').trim()
       geminiParts.push({
-        text: '이 이미지에 포함된 모든 텍스트, 데이터, 정보를 빠짐없이 정확하게 추출해주세요. 표 형태 데이터가 있으면 구조를 유지해서 정리해주세요. 명함이면 이름/회사/직함/연락처/이메일을 정리해주세요.',
+        text: `다음은 B2B 영업 관리 시스템에서 사용자가 첨부한 파일입니다.
+파일에 포함된 모든 텍스트, 데이터, 정보를 빠짐없이 정확하게 추출해주세요.
+
+분석 지침:
+- 명함: 이름, 회사명, 직함, 전화번호, 이메일, 주소를 구분하여 정리
+- 견적서/제안서: 고객사, 금액, 제품/서비스, 날짜 등 주요 항목 정리
+- 계약서: 계약 당사자, 기간, 금액, 주요 조건 정리
+- 표 형태 데이터: 구조를 유지해서 정리
+- PDF 문서: 전체 내용을 읽고 핵심 정보 추출
+- 기타: 문서 종류를 파악하고 관련 정보 추출
+
+${userContext ? `사용자 메시지: ${userContext}` : ''}`,
       })
 
       try {
@@ -1052,28 +1033,44 @@ AI: → getAllActivities 도구로 전체 활동 조회
         const geminiResponse = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: geminiParts }] }),
+          body: JSON.stringify({
+            contents: [{ parts: geminiParts }],
+            safetySettings: [
+              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 4096,
+            },
+          }),
         })
 
         const geminiData = await geminiResponse.json()
         if (geminiResponse.ok) {
-          const imageAnalysis = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
-          console.log('Gemini vision analysis:', imageAnalysis)
-          lastMsg.content = `[첨부 이미지 분석 결과]\n${imageAnalysis}\n\n[사용자 요청]\n${originalText}`
+          const analysis = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+          if (analysis.trim()) {
+            console.log('Gemini analysis:', analysis.substring(0, 200))
+            lastMsg.content = `[첨부 파일 분석 결과]\n${analysis}\n\n[사용자 요청]\n${userContext || '첨부된 파일을 확인해주세요.'}`
+          } else {
+            console.warn('Gemini returned empty analysis')
+            lastMsg.content = `${originalText}\n\n(파일 내용을 추출하지 못했습니다. 파일 내용을 텍스트로 설명해주시면 처리해드릴게요.)`
+          }
         } else {
-          console.error('Gemini API error:', geminiData)
-          lastMsg.content = `${originalText}\n\n(이미지 분석에 실패했습니다. 이미지 내용을 텍스트로 설명해주시면 처리해드릴게요.)`
+          const errDetail = geminiData?.error?.message || JSON.stringify(geminiData).substring(0, 200)
+          console.error('Gemini API error:', errDetail)
+          lastMsg.content = `${originalText}\n\n(파일 분석에 실패했습니다. 파일 내용을 텍스트로 설명해주시면 처리해드릴게요.)`
         }
       } catch (visionError) {
         console.error('Gemini vision error:', visionError)
-        lastMsg.content = `${originalText}\n\n(이미지 분석에 실패했습니다. 이미지 내용을 텍스트로 설명해주시면 처리해드릴게요.)`
+        lastMsg.content = `${originalText}\n\n(파일 분석 중 오류가 발생했습니다. 파일 내용을 텍스트로 설명해주시면 처리해드릴게요.)`
       }
-    } else if (hasImages) {
+    } else if (hasMediaFiles) {
       const lastMsg = groqMessages[groqMessages.length - 1]
-      const originalText = Array.isArray(lastMsg.content)
-        ? (lastMsg.content as GroqContentPart[]).filter(p => p.type === 'text').map(p => (p as { type: 'text'; text: string }).text).join('\n')
-        : String(lastMsg.content || '')
-      lastMsg.content = `${originalText}\n\n(GEMINI_API_KEY가 설정되지 않아 이미지를 분석할 수 없습니다.)`
+      const originalText = typeof lastMsg.content === 'string' ? lastMsg.content : ''
+      lastMsg.content = `${originalText}\n\n(GEMINI_API_KEY가 설정되지 않아 파일을 분석할 수 없습니다.)`
     }
 
     let data = await callGroq(groqMessages, initialSystemPrompt)
