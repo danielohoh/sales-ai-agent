@@ -375,3 +375,169 @@ export async function renderTemplate(templateId: string, clientId: string) {
     error: null
   }
 }
+
+// ============================================
+// Naver Works Mail API Types
+// ============================================
+
+export type MailFolder = {
+  folderId: string
+  folderType: 'S' | 'U'
+  folderName: string
+  unreadMailCount: number
+  mailCount: number
+  usage: number
+}
+
+export type MailAddress = {
+  name: string
+  emailAddress: string
+}
+
+export type MailItem = {
+  mailId: string
+  subject: string
+  from: MailAddress
+  to: MailAddress[]
+  cc?: MailAddress[]
+  receivedTime: string
+  isRead: boolean
+  hasAttachment: boolean
+  body?: {
+    contentType: string
+    content: string
+  }
+}
+
+export type MailListResponse = {
+  mails: MailItem[]
+  responseMetaData?: {
+    nextCursor?: string
+  }
+}
+
+// ============================================
+// Naver Works Mail API Actions
+// ============================================
+
+// 메일 폴더 목록 조회
+export async function getMailFolders() {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { data: null as MailFolder[] | null, error: '인증이 필요합니다.' }
+
+  const senderUserId = process.env.NAVER_WORKS_MAIL_SENDER
+  if (!senderUserId) {
+    return { data: null as MailFolder[] | null, error: 'NAVER_WORKS_MAIL_SENDER 설정이 필요합니다.' }
+  }
+
+  const tokenResult = await getNaverWorksAccessTokenForUser(user.id)
+  if (tokenResult.error || !tokenResult.accessToken) {
+    return { data: null as MailFolder[] | null, error: tokenResult.error || '토큰 발급 실패' }
+  }
+
+  const response = await fetch(
+    `https://www.worksapis.com/v1.0/users/${encodeURIComponent(senderUserId)}/mail/mailfolders`,
+    {
+      headers: {
+        Authorization: `Bearer ${tokenResult.accessToken}`,
+      },
+    }
+  )
+
+  if (!response.ok) {
+    const text = await response.text()
+    return { data: null as MailFolder[] | null, error: `메일 폴더 조회 실패 (${response.status}): ${text}` }
+  }
+
+  const json = await response.json()
+  return { data: (json.mailFolders || []) as MailFolder[], error: null }
+}
+
+// 메일 목록 조회
+export async function getMailList(
+  folderId: string,
+  options?: {
+    cursor?: string
+    count?: number
+    searchFilterType?: 'all' | 'mark' | 'attach' | 'tome'
+    isUnread?: boolean
+  }
+) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { data: null as MailListResponse | null, error: '인증이 필요합니다.' }
+
+  const senderUserId = process.env.NAVER_WORKS_MAIL_SENDER
+  if (!senderUserId) {
+    return { data: null as MailListResponse | null, error: 'NAVER_WORKS_MAIL_SENDER 설정이 필요합니다.' }
+  }
+
+  const tokenResult = await getNaverWorksAccessTokenForUser(user.id)
+  if (tokenResult.error || !tokenResult.accessToken) {
+    return { data: null as MailListResponse | null, error: tokenResult.error || '토큰 발급 실패' }
+  }
+
+  const params = new URLSearchParams()
+  if (options?.count) params.set('count', String(options.count))
+  if (options?.cursor) params.set('cursor', options.cursor)
+  if (options?.searchFilterType) params.set('searchFilterType', options.searchFilterType)
+  if (options?.isUnread !== undefined) params.set('isUnread', String(options.isUnread))
+
+  const queryString = params.toString()
+  const url = `https://www.worksapis.com/v1.0/users/${encodeURIComponent(senderUserId)}/mail/mailfolders/${encodeURIComponent(folderId)}/children${queryString ? `?${queryString}` : ''}`
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${tokenResult.accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    return { data: null as MailListResponse | null, error: `메일 목록 조회 실패 (${response.status}): ${text}` }
+  }
+
+  const json = await response.json()
+  return {
+    data: {
+      mails: json.mails || [],
+      responseMetaData: json.responseMetaData || undefined,
+    } as MailListResponse,
+    error: null,
+  }
+}
+
+// 메일 상세 조회
+export async function getMailDetail(mailId: string) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { data: null as MailItem | null, error: '인증이 필요합니다.' }
+
+  const senderUserId = process.env.NAVER_WORKS_MAIL_SENDER
+  if (!senderUserId) {
+    return { data: null as MailItem | null, error: 'NAVER_WORKS_MAIL_SENDER 설정이 필요합니다.' }
+  }
+
+  const tokenResult = await getNaverWorksAccessTokenForUser(user.id)
+  if (tokenResult.error || !tokenResult.accessToken) {
+    return { data: null as MailItem | null, error: tokenResult.error || '토큰 발급 실패' }
+  }
+
+  const response = await fetch(
+    `https://www.worksapis.com/v1.0/users/${encodeURIComponent(senderUserId)}/mail/${encodeURIComponent(mailId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${tokenResult.accessToken}`,
+      },
+    }
+  )
+
+  if (!response.ok) {
+    const text = await response.text()
+    return { data: null as MailItem | null, error: `메일 상세 조회 실패 (${response.status}): ${text}` }
+  }
+
+  const json = await response.json()
+  return { data: json as MailItem, error: null }
+}

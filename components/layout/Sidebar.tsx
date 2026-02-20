@@ -56,8 +56,8 @@ const navItems = [
     label: '이메일', 
     icon: Mail,
     children: [
-      { href: '/email/compose', label: '발송' },
-      { href: '/email/templates', label: '템플릿' },
+      { href: '/email', label: '메일함' },
+      { href: '/email/compose', label: '메일 작성' },
     ]
   },
   { href: '/proposals', label: '제안서', icon: FileText },

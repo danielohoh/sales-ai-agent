@@ -1,19 +1,19 @@
 import { MainLayout } from '@/components/layout'
-import { getEmailTemplates } from './actions'
-import { EmailTemplateList } from '@/components/email/EmailTemplateList'
+import { getEmailTemplates, getMailFolders } from './actions'
+import { EmailMailbox } from '@/components/email/EmailMailbox'
 
 export default async function EmailPage() {
-  const { data: templates, error } = await getEmailTemplates()
+  const [templatesResult, foldersResult] = await Promise.all([
+    getEmailTemplates(),
+    getMailFolders(),
+  ])
 
   return (
-    <MainLayout title="이메일 템플릿">
-      {error ? (
-        <div className="p-4 bg-red-50 text-red-600 rounded-lg">
-          {error}
-        </div>
-      ) : (
-        <EmailTemplateList templates={templates || []} />
-      )}
+    <MainLayout title="이메일">
+      <EmailMailbox
+        initialFolders={foldersResult.data || []}
+        templates={templatesResult.data || []}
+      />
     </MainLayout>
   )
 }
