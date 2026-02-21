@@ -955,20 +955,39 @@ AI: → getAllActivities 도구로 전체 활동 조회
         body.tools = geminiTools
       }
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
+      const maxRetries = 3
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
 
-      const data = (await response.json()) as GeminiResponse
-      if (!response.ok) {
-        const msg = data?.error?.message || `Gemini API 호출 실패 (${response.status})`
-        console.error('Gemini API error:', msg)
-        throw new Error(msg)
+        if (response.status === 429 && attempt < maxRetries) {
+          const waitMs = Math.min(1000 * Math.pow(2, attempt), 8000)
+          console.warn(`Gemini 429 rate limit, retry ${attempt + 1}/${maxRetries} after ${waitMs}ms`)
+          await new Promise(resolve => setTimeout(resolve, waitMs))
+          continue
+        }
+
+        const data = (await response.json()) as GeminiResponse
+        if (!response.ok) {
+          const rawMsg = data?.error?.message || ''
+          console.error('Gemini API error:', response.status, rawMsg)
+
+          if (response.status === 429 || rawMsg.includes('quota') || rawMsg.includes('Quota')) {
+            throw new Error('QUOTA_EXCEEDED')
+          }
+          if (response.status === 403) {
+            throw new Error('API_FORBIDDEN')
+          }
+          throw new Error(`GEMINI_ERROR:${response.status}`)
+        }
+
+        return data
       }
 
-      return data
+      throw new Error('QUOTA_EXCEEDED')
     }
 
     let data = await callGemini(geminiContents)
@@ -1049,9 +1068,19 @@ AI: → getAllActivities 도구로 전체 활동 조회
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error)
     console.error('API Error:', errMsg, error)
-    const errorResponse: ChatApiResponse = {
-      content: `앗, 처리 중 문제가 있었어요. 😅\n\n오류: ${errMsg}\n\n다시 한 번 시도해주시겠어요?` 
+
+    let userMessage: string
+    if (errMsg === 'QUOTA_EXCEEDED') {
+      userMessage = 'AI 서비스 사용량이 초과되었어요. 😅\n\n잠시 후 다시 시도해주시거나, 관리자에게 문의해주세요.'
+    } else if (errMsg === 'API_FORBIDDEN') {
+      userMessage = 'AI 서비스 접근 권한에 문제가 있어요. 😅\n\n관리자에게 API 설정을 확인해달라고 요청해주세요.'
+    } else if (errMsg.startsWith('GEMINI_ERROR:')) {
+      userMessage = '일시적인 AI 서비스 오류가 발생했어요. 😅\n\n잠시 후 다시 시도해주세요.'
+    } else {
+      userMessage = '앗, 처리 중 문제가 있었어요. 😅\n\n다시 한 번 시도해주시겠어요?'
     }
+
+    const errorResponse: ChatApiResponse = { content: userMessage }
     return Response.json(errorResponse)
   }
 }
