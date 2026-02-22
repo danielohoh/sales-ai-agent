@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Mail, ListTodo, FileText, BarChart3, Columns3, Settings, LogOut } from 'lucide-react'
 import { logout } from '@/app/auth/actions'
+import { useUser } from '@/lib/hooks/useUser'
 
 const menuItems = [
   { href: '/email', label: '이메일', icon: Mail, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -15,6 +16,10 @@ const menuItems = [
 ]
 
 export default function MorePage() {
+  const { user } = useUser()
+  const displayName = user?.name || '사용자'
+  const displayEmail = user?.email || ''
+
   const handleLogout = async () => {
     await logout()
   }
@@ -43,11 +48,11 @@ export default function MorePage() {
         <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
-              <span className="text-sm font-semibold text-slate-700">김</span>
+              <span className="text-sm font-semibold text-slate-700">{displayName.charAt(0)}</span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-900">김영업</p>
-              <p className="truncate text-xs text-slate-500">sales@msbenter.com</p>
+              <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
+              <p className="truncate text-xs text-slate-500">{displayEmail}</p>
             </div>
           </div>
 

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { MobileBottomNav } from './MobileBottomNav'
+import { useUser } from '@/lib/hooks/useUser'
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -12,6 +13,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children, title }: MainLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const { user, loading: userLoading } = useUser()
 
   return (
     <div className="flex min-h-screen bg-[#F9FAFB]">
@@ -19,12 +21,15 @@ export function MainLayout({ children, title }: MainLayoutProps) {
         <Sidebar
           collapsed={isSidebarCollapsed}
           onToggle={() => setIsSidebarCollapsed((prev) => !prev)}
+          userName={userLoading ? '' : (user?.name ?? '')}
+          userEmail={userLoading ? '' : (user?.email ?? '')}
         />
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           title={title}
+          userName={userLoading ? '' : (user?.name ?? '')}
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
         />

@@ -57,7 +57,6 @@ const navItems: NavItem[] = [
     icon: BarChart3,
     children: [
       { href: '/analytics/failure', label: '실패 분석' },
-      { href: '/analytics/reports', label: '리포트' },
     ]
   },
   { href: '/settings', label: '설정', icon: Settings },
@@ -66,9 +65,11 @@ const navItems: NavItem[] = [
 interface SidebarProps {
   collapsed?: boolean
   onToggle?: () => void
+  userName?: string
+  userEmail?: string
 }
 
-export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed = false, onToggle, userName, userEmail }: SidebarProps) {
   const pathname = usePathname()
   const [openMenus, setOpenMenus] = useState<string[]>([])
 
@@ -215,11 +216,23 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white border border-slate-200">
-            <span className="text-sm font-semibold text-slate-700">김</span>
+            {userName ? (
+              <span className="text-sm font-semibold text-slate-700">{userName.charAt(0)}</span>
+            ) : (
+              <span className="inline-block h-3 w-3 animate-pulse rounded bg-slate-200" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900">김영업</p>
-            <p className="truncate text-xs text-slate-500">sales@msbenter.com</p>
+            {userName ? (
+              <p className="truncate text-sm font-semibold text-slate-900">{userName}</p>
+            ) : (
+              <div className="h-4 w-20 animate-pulse rounded bg-slate-200" />
+            )}
+            {userEmail ? (
+              <p className="truncate text-xs text-slate-500">{userEmail}</p>
+            ) : (
+              <div className="mt-1 h-3 w-28 animate-pulse rounded bg-slate-200" />
+            )}
           </div>
         </div>
       </div>
