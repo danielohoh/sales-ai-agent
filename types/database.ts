@@ -140,12 +140,14 @@ export interface ActivityLog {
 
 export interface EmailTemplate {
   id: string
+  user_id: string
+  template_type: string
   name: string
-  situation_type: string
-  subject_template: string
-  body_template: string
+  subject: string
+  body: string
   variables: string[] | null
   created_at: string
+  updated_at: string
 }
 
 export interface Proposal {

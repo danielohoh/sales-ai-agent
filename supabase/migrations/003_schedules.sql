@@ -1,47 +1,34 @@
 -- 일정 관리 테이블
--- Supabase SQL Editor에서 실행하세요
+-- Supabase SQL Editor에서 실행하세요 (003번 - 002_core_tables.sql 이후 실행)
 
 -- 1. 일정 테이블
 CREATE TABLE IF NOT EXISTS schedules (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
-  
-  -- 일정 기본 정보
+
   title VARCHAR(200) NOT NULL,
   description TEXT,
   schedule_type VARCHAR(50) NOT NULL DEFAULT 'meeting',
-  -- meeting: 미팅, call: 전화, demo: 데모, contract: 계약, internal: 내부회의, other: 기타
-  
-  -- 일시
-  start_date DATE NOT NULL,
-  start_time TIME,
-  end_time TIME,
-  is_all_day BOOLEAN DEFAULT FALSE,
-  
-  -- 장소 정보
+
+  start_date TIMESTAMPTZ NOT NULL,
+  end_date TIMESTAMPTZ NOT NULL,
+  all_day BOOLEAN DEFAULT FALSE,
+
   location VARCHAR(500),
   address VARCHAR(500),
-  
-  -- 담당자 정보 (고객 연결 시 자동 입력, 수정 가능)
+
   contact_name VARCHAR(100),
   contact_phone VARCHAR(50),
-  contact_email VARCHAR(200),
-  
-  -- 미팅 내용 (완료 후 기록)
+
   meeting_notes TEXT,
-  
-  -- 상태
+  checklist JSONB NOT NULL DEFAULT '[]'::JSONB,
+
   status VARCHAR(20) DEFAULT 'scheduled',
-  -- scheduled: 예정, completed: 완료, cancelled: 취소
-  
-  -- 알림
   reminder_sent BOOLEAN DEFAULT FALSE,
-  
-  -- 타임스탬프
+
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  completed_at TIMESTAMPTZ
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 2. 미팅 준비 체크리스트 테이블
