@@ -1,8 +1,6 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Mail, Paperclip, Loader2 } from 'lucide-react'
 import type { MailItem } from '@/app/email/actions'
 
@@ -12,8 +10,6 @@ interface MailListViewProps {
   onSelectMail: (mailId: string) => void
   folderName: string
   isLoading: boolean
-  onLoadMore?: () => void
-  hasMore?: boolean
 }
 
 function formatMailDate(dateStr: string) {
@@ -27,28 +23,31 @@ function formatMailDate(dateStr: string) {
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate()
 
+  const m = date.getMonth() + 1
+  const d = String(date.getDate()).padStart(2, '0')
+  const h = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+
   if (isToday) {
-    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+    return `${h}:${min}`
   }
 
-  const isThisYear = date.getFullYear() === now.getFullYear()
-  if (isThisYear) {
-    return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+  if (date.getFullYear() === now.getFullYear()) {
+    return `${m}. ${d}. ${h}:${min}`
   }
 
-  return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+  return `${date.getFullYear()}. ${m}. ${d}.`
 }
 
 function MailSkeleton() {
   return (
-    <div className="space-y-1">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="px-4 py-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-24 bg-slate-200 rounded animate-pulse" />
-            <div className="ml-auto h-3 w-12 bg-slate-200 rounded animate-pulse" />
-          </div>
-          <div className="h-3 w-48 bg-slate-100 rounded animate-pulse" />
+    <div>
+      {Array.from({ length: 10 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-100">
+          <div className="h-3 w-28 bg-slate-200 rounded animate-pulse shrink-0" />
+          <div className="h-3 w-16 bg-slate-100 rounded animate-pulse shrink-0" />
+          <div className="h-3 flex-1 bg-slate-100 rounded animate-pulse" />
+          <div className="h-3 w-20 bg-slate-200 rounded animate-pulse shrink-0" />
         </div>
       ))}
     </div>
@@ -61,61 +60,70 @@ export function MailListView({
   onSelectMail,
   folderName,
   isLoading,
-  onLoadMore,
-  hasMore = false,
 }: MailListViewProps) {
-  return (
-    <div className="flex flex-col h-full border-r border-slate-200 bg-white">
-      <div className="px-4 py-3 border-b border-slate-100">
-        <h3 className="text-sm font-semibold text-slate-900">{folderName}</h3>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {isLoading ? '불러오는 중...' : `${mails.length}개의 메일`}
-        </p>
-      </div>
+  if (isLoading && mails.length === 0) {
+    return <MailSkeleton />
+  }
 
-      <ScrollArea className="flex-1">
-        {isLoading && mails.length === 0 ? (
-          <MailSkeleton />
-        ) : mails.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-            <Mail className="h-10 w-10 mb-3" />
-            <p className="text-sm">메일이 없습니다.</p>
-          </div>
-        ) : (
-          <div>
-            {mails.map((mail) => (
-              <button
-                key={mail.mailId}
-                onClick={() => onSelectMail(mail.mailId)}
-                className={cn(
-                  'w-full text-left px-4 py-3 border-b border-slate-50 transition-colors',
-                  activeMailId === mail.mailId
-                    ? 'bg-blue-50'
-                    : 'hover:bg-slate-50',
-                  !mail.isRead && 'bg-white'
-                )}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  {!mail.isRead && (
-                    <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
-                  )}
+  if (mails.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+        <Mail className="h-10 w-10 mb-3" />
+        <p className="text-sm">메일이 없습니다.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {isLoading && (
+        <div className="flex items-center justify-center gap-2 py-2 text-xs text-slate-500 bg-blue-50/50 border-b border-slate-100">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          불러오는 중...
+        </div>
+      )}
+      {mails.map((mail) => {
+        const senderDisplay = mail.from?.name || mail.from?.emailAddress || '(발신자 없음)'
+        const isActive = activeMailId === mail.mailId
+        const unread = !mail.isRead
+
+        return (
+          <button
+            key={mail.mailId}
+            onClick={() => onSelectMail(mail.mailId)}
+            className={cn(
+              'w-full flex items-start md:items-center gap-2 px-4 py-3 md:py-2.5 border-b border-slate-100 text-left transition-colors',
+              isActive ? 'bg-blue-50' : 'hover:bg-slate-50/80'
+            )}
+          >
+            {/* Unread indicator */}
+            <span className="w-2 shrink-0 flex justify-center pt-1 md:pt-0">
+              {unread && <span className="h-2 w-2 rounded-full bg-blue-500" />}
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <div className="md:hidden min-w-0">
+                <div className="flex items-center gap-2">
                   <span
                     className={cn(
-                      'text-sm truncate flex-1',
-                      !mail.isRead ? 'font-semibold text-slate-900' : 'text-slate-700'
+                      'min-w-0 truncate text-sm',
+                      unread ? 'font-semibold text-slate-900' : 'text-slate-600'
                     )}
                   >
-                    {mail.from?.name || mail.from?.emailAddress || '(발신자 없음)'}
+                    {senderDisplay}
                   </span>
-                  <span className="text-xs text-slate-400 shrink-0">
+                  <span className="ml-auto shrink-0 text-[11px] text-slate-400">
                     {formatMailDate(mail.receivedTime)}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="mt-0.5 flex items-center gap-1.5 min-w-0">
+                  <span className="inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-orange-50 text-orange-600 border border-orange-200/60">
+                    {folderName}
+                  </span>
                   <span
                     className={cn(
-                      'text-sm truncate flex-1',
-                      !mail.isRead ? 'text-slate-800' : 'text-slate-500'
+                      'min-w-0 truncate text-sm',
+                      unread ? 'font-semibold text-slate-900' : 'text-slate-500'
                     )}
                   >
                     {mail.subject || '(제목 없음)'}
@@ -124,32 +132,43 @@ export function MailListView({
                     <Paperclip className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                   )}
                 </div>
-              </button>
-            ))}
-
-            {hasMore && (
-              <div className="p-3 text-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onLoadMore}
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      불러오는 중...
-                    </>
-                  ) : (
-                    '더 보기'
-                  )}
-                </Button>
               </div>
-            )}
-          </div>
-        )}
-      </ScrollArea>
+
+              <div className="hidden md:flex md:items-center md:gap-2 md:min-w-0">
+                <span
+                  className={cn(
+                    'w-[160px] shrink-0 truncate text-sm',
+                    unread ? 'font-semibold text-slate-900' : 'text-slate-600'
+                  )}
+                >
+                  {senderDisplay}
+                </span>
+
+                <span className="hidden sm:inline-flex shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium bg-orange-50 text-orange-600 border border-orange-200/60">
+                  {folderName}
+                </span>
+
+                <span
+                  className={cn(
+                    'flex-1 min-w-0 truncate text-sm',
+                    unread ? 'font-semibold text-slate-900' : 'text-slate-500'
+                  )}
+                >
+                  {mail.subject || '(제목 없음)'}
+                </span>
+
+                {mail.hasAttachment && (
+                  <Paperclip className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                )}
+
+                <span className="w-[110px] shrink-0 text-right text-xs text-slate-400">
+                  {formatMailDate(mail.receivedTime)}
+                </span>
+              </div>
+            </div>
+          </button>
+        )
+      })}
     </div>
   )
 }

@@ -79,7 +79,6 @@ export default async function EmailPage({
   return (
     <MainLayout title="이메일">
       <EmailMailbox
-        folderType={folderType}
         folderId={targetFolder?.folderId || ''}
         folderName={folderName}
         initialMails={mails}
