@@ -146,7 +146,7 @@ export function FailureAnalysis({ data }: FailureAnalysisProps) {
           </CardHeader>
           <CardContent>
             {categoryDataWithPercent.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={300} minWidth={1} minHeight={1}>
                 <PieChart>
                   <Pie
                     data={categoryDataWithPercent}
@@ -179,7 +179,7 @@ export function FailureAnalysis({ data }: FailureAnalysisProps) {
             <CardDescription>최근 6개월</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={300} minWidth={1} minHeight={1}>
               <LineChart data={data.monthlyFailures}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />

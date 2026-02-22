@@ -26,7 +26,7 @@ export function PipelineChart({ data }: PipelineChartProps) {
 
   return (
     <div className="h-[240px] sm:h-[280px] md:h-[300px] w-full overflow-hidden">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
         <BarChart data={filteredData} layout="vertical" margin={{ top: 8, right: 12, bottom: 8, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           <XAxis type="number" allowDecimals={false} />
@@ -73,7 +73,7 @@ export function SourceChart({ data }: SourceChartProps) {
 
   return (
     <div className="h-[220px] sm:h-[260px] md:h-[300px] w-full overflow-hidden">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
         <PieChart>
           <Pie
             data={chartData}
@@ -105,7 +105,7 @@ interface MonthlyChartProps {
 export function MonthlyChart({ data }: MonthlyChartProps) {
   return (
     <div className="h-[220px] sm:h-[260px] md:h-[300px] w-full overflow-hidden">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
         <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="month" tick={{ fontSize: 12 }} />

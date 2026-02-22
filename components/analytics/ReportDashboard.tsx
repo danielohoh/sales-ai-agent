@@ -194,7 +194,7 @@ export function ReportDashboard({ data, currentPeriod }: ReportDashboardProps) {
             <CardDescription>단계별 고객 분포</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={300} minWidth={1} minHeight={1}>
               <BarChart data={data.pipelineStats.filter(s => s.count > 0)} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} />
                 <XAxis type="number" />
@@ -214,7 +214,7 @@ export function ReportDashboard({ data, currentPeriod }: ReportDashboardProps) {
           </CardHeader>
           <CardContent>
             {activityData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={300} minWidth={1} minHeight={1}>
                 <PieChart>
                   <Pie
                     data={activityData}
