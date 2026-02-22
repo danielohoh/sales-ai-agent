@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
@@ -22,12 +23,14 @@ import {
   Phone,
   Mail,
   Pencil,
+  Trash2,
   MessageSquare,
   FileText,
   Clock,
   MessageCircle,
 } from 'lucide-react'
 import { PIPELINE_STAGES, INQUIRY_SOURCES, ACTIVITY_TYPES } from '@/lib/constants'
+import { deleteClient } from '@/app/clients/actions'
 import { StageChangeModal } from './StageChangeModal'
 import { CallLogModal } from './CallLogModal'
 import { MessageLogModal } from './MessageLogModal'
@@ -38,10 +41,25 @@ interface ClientDetailProps {
 }
 
 export function ClientDetail({ client }: ClientDetailProps) {
+  const router = useRouter()
   const [showStageModal, setShowStageModal] = useState(false)
   const [showCallModal, setShowCallModal] = useState(false)
   const [showKakaoModal, setShowKakaoModal] = useState(false)
   const [showSmsModal, setShowSmsModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    const result = await deleteClient(client.id)
+    if (result.error) {
+      alert(result.error)
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    } else {
+      router.push('/clients')
+    }
+  }
 
   const stageInfo = PIPELINE_STAGES[client.pipeline_stage as PipelineStage]
   const sourceInfo = client.inquiry_source 
@@ -97,6 +115,15 @@ export function ClientDetail({ client }: ClientDetailProps) {
               수정
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            className="min-h-11 w-full sm:w-auto text-red-500 hover:text-red-700 hover:bg-red-50"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            삭제
+          </Button>
         </div>
       </div>
 
@@ -346,6 +373,27 @@ export function ClientDetail({ client }: ClientDetailProps) {
           clientName={client.company_name}
           type="sms"
         />
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg p-6 max-w-sm mx-4 space-y-4">
+            <h3 className="text-lg font-semibold">고객 삭제</h3>
+            <p className="text-slate-600">
+              <strong>{client.company_name}</strong>을(를) 정말 삭제하시겠습니까?
+              <br />
+              <span className="text-sm text-red-500">이 작업은 되돌릴 수 없습니다.</span>
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>
+                취소
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleDelete} disabled={isDeleting}>
+                {isDeleting ? '삭제 중...' : '삭제'}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
