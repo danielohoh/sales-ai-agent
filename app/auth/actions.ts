@@ -65,3 +65,44 @@ export async function getUser() {
   const { data: { user } } = await supabase.auth.getUser()
   return user
 }
+
+export async function updateProfile(formData: FormData) {
+  const supabase = await createClient()
+  const name = formData.get('name') as string
+
+  if (!name || name.trim().length === 0) {
+    return { error: '이름을 입력해주세요.' }
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    data: { name: name.trim() },
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
+}
+
+export async function updatePassword(formData: FormData) {
+  const supabase = await createClient()
+  const password = formData.get('password') as string
+  const confirmPassword = formData.get('confirmPassword') as string
+
+  if (!password || password.length < 6) {
+    return { error: '비밀번호는 6자 이상이어야 합니다.' }
+  }
+
+  if (password !== confirmPassword) {
+    return { error: '비밀번호가 일치하지 않습니다.' }
+  }
+
+  const { error } = await supabase.auth.updateUser({ password })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
+}
